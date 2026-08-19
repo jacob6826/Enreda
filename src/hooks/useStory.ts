@@ -1,9 +1,12 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { Story, Chapter, Snapshot, SyncState } from '../types/manuscript';
-import { indexedDBAdapter as storage } from '../services/storage/IndexedDBAdapter';
+import { createFirestoreAdapter } from '../services/storage/FirestoreAdapter';
 import { parseOverviewToChapters } from '../services/parser/outlineParser';
+import type { User } from 'firebase/auth';
 
-export function useStory() {
+export function useStory(user?: User | null) {
+  const storage = useMemo(() => createFirestoreAdapter(user?.uid || null), [user?.uid]);
+
   const [stories, setStories] = useState<Story[]>([]);
   const [activeStory, setActiveStory] = useState<Story | null>(null);
   const [chapters, setChapters] = useState<Chapter[]>([]);
@@ -43,12 +46,11 @@ export function useStory() {
     } finally {
       setLoading(false);
     }
-  }, [activeStory?.id, activeChapterId]);
+  }, [storage, activeStory?.id, activeChapterId]);
 
   useEffect(() => {
     refreshStories();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [user?.uid, storage]);
 
   // 15-minute Automatic Snapshot timer following industry standards
   useEffect(() => {

@@ -41,7 +41,7 @@ export function App() {
     generateChaptersFromOverview,
     manualSaveAndSnapshot,
     restoreSnapshot,
-  } = useStory();
+  } = useStory(user);
 
   // Guest bypass state for unauthenticated users
   const [hasContinuedAsGuest, setHasContinuedAsGuest] = useState<boolean>(() => {

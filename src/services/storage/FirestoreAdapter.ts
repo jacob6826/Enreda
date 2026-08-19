@@ -36,12 +36,52 @@ export function createFirestoreAdapter(userId: string | null): StorageAdapter {
           const data = d.data() as Story;
           stories.push({ ...data, targetWordCount: data.targetWordCount || 50000 });
         });
-        if (stories.length === 0) {
-          // If Firestore is empty for user, fallback to local IndexedDB
-          return await indexedDBAdapter.getStories();
+
+        // Get local IndexedDB stories to auto-sync into Firestore if needed
+        const localStories = await indexedDBAdapter.getStories();
+
+        if (stories.length > 0) {
+          // Sync any local story that isn't in Firestore yet
+          for (const localStory of localStories) {
+            if (!stories.some((s) => s.id === localStory.id)) {
+              try {
+                await setDoc(doc(storiesCol, localStory.id), localStory, { merge: true });
+                const localChs = await indexedDBAdapter.getChapters(localStory.id);
+                if (localChs.length > 0) {
+                  const batch = writeBatch(db);
+                  localChs.forEach((ch) => batch.set(doc(chaptersCol, ch.id), ch, { merge: true }));
+                  await batch.commit();
+                }
+                stories.push(localStory);
+              } catch (e) {
+                console.warn('Failed to push local story to Firestore:', e);
+              }
+            }
+          }
+          return stories;
         }
-        return stories;
-      } catch {
+
+        // If Firestore is empty, upload all local stories to Firestore
+        if (localStories.length > 0) {
+          for (const localStory of localStories) {
+            try {
+              await setDoc(doc(storiesCol, localStory.id), localStory, { merge: true });
+              const localChs = await indexedDBAdapter.getChapters(localStory.id);
+              if (localChs.length > 0) {
+                const batch = writeBatch(db);
+                localChs.forEach((ch) => batch.set(doc(chaptersCol, ch.id), ch, { merge: true }));
+                await batch.commit();
+              }
+            } catch (e) {
+              console.warn('Failed to seed Firestore from local data:', e);
+            }
+          }
+          return localStories;
+        }
+
+        return await indexedDBAdapter.getStories();
+      } catch (err) {
+        console.warn('Firestore getStories error, using local storage:', err);
         return await indexedDBAdapter.getStories();
       }
     },
@@ -59,7 +99,6 @@ export function createFirestoreAdapter(userId: string | null): StorageAdapter {
     },
 
     async saveStory(story: Story): Promise<void> {
-      // Save locally first
       await indexedDBAdapter.saveStory(story);
       try {
         const docRef = doc(storiesCol, story.id);
@@ -73,11 +112,12 @@ export function createFirestoreAdapter(userId: string | null): StorageAdapter {
       await indexedDBAdapter.deleteStory(storyId);
       try {
         await deleteDoc(doc(storiesCol, storyId));
-        // Delete chapters in Firestore
         const chSnap = await getDocs(query(chaptersCol, where('storyId', '==', storyId)));
-        const batch = writeBatch(db);
-        chSnap.forEach((d) => batch.delete(d.ref));
-        await batch.commit();
+        if (db) {
+          const batch = writeBatch(db);
+          chSnap.forEach((d) => batch.delete(d.ref));
+          await batch.commit();
+        }
       } catch (err) {
         console.warn('Firestore story deletion failed:', err);
       }
@@ -121,11 +161,13 @@ export function createFirestoreAdapter(userId: string | null): StorageAdapter {
     async saveChapters(chapters: Chapter[]): Promise<void> {
       await indexedDBAdapter.saveChapters(chapters);
       try {
-        const batch = writeBatch(db);
-        chapters.forEach((ch) => {
-          batch.set(doc(chaptersCol, ch.id), ch, { merge: true });
-        });
-        await batch.commit();
+        if (db && chapters.length > 0) {
+          const batch = writeBatch(db);
+          chapters.forEach((ch) => {
+            batch.set(doc(chaptersCol, ch.id), ch, { merge: true });
+          });
+          await batch.commit();
+        }
       } catch (err) {
         console.warn('Firestore bulk chapters save failed:', err);
       }
