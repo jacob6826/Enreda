@@ -5,7 +5,7 @@ import {
   onAuthStateChanged,
   User,
 } from 'firebase/auth';
-import { auth, isFirebaseConfigured } from './firebaseConfig';
+import { auth, isFirebaseConfigured, missingEnvVars } from './firebaseConfig';
 
 export interface AuthState {
   user: User | null;
@@ -14,13 +14,14 @@ export interface AuthState {
 
 function handleAuthError(err: any): never {
   const code = err?.code || '';
-  if (code === 'auth/api-key-not-valid' || code === 'auth/invalid-api-key' || !isFirebaseConfigured) {
+  if (!isFirebaseConfigured || code === 'auth/api-key-not-valid' || code === 'auth/invalid-api-key') {
+    const missingStr = missingEnvVars.length > 0 ? ` Missing: ${missingEnvVars.join(', ')}.` : '';
     throw new Error(
-      'Firebase Web App credentials are missing or invalid. Please copy your Web App config from Firebase Console (Project Settings -> General -> Your Apps) into your Netlify Environment Variables or local .env file.'
+      `Firebase Web App credentials are missing or invalid in your build environment.${missingStr} Please check Netlify Environment Variables (ensure keys start with VITE_ and are not secrets) or your local .env file.`
     );
   }
   if (code === 'auth/user-not-found' || code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
-    throw new Error('Invalid email or password. Please try again or create an account.');
+    throw new Error('Invalid email or password. Please check your spelling or click "Create Account".');
   }
   if (code === 'auth/email-already-in-use') {
     throw new Error('An account with this email already exists. Click "Sign In" to log in.');
@@ -32,7 +33,7 @@ function handleAuthError(err: any): never {
 }
 
 export async function loginWithEmail(email: string, pass: string): Promise<User> {
-  if (!isFirebaseConfigured || !auth) {
+  if (!auth) {
     handleAuthError({ code: 'auth/api-key-not-valid' });
   }
   try {
@@ -44,7 +45,7 @@ export async function loginWithEmail(email: string, pass: string): Promise<User>
 }
 
 export async function registerWithEmail(email: string, pass: string): Promise<User> {
-  if (!isFirebaseConfigured || !auth) {
+  if (!auth) {
     handleAuthError({ code: 'auth/api-key-not-valid' });
   }
   try {
