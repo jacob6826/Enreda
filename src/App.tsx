@@ -13,6 +13,7 @@ import { ExportModal } from './components/modals/ExportModal';
 import { FindReplaceModal } from './components/modals/FindReplaceModal';
 import { AuthModal } from './components/auth/AuthModal';
 import { LandingPage } from './components/auth/LandingPage';
+import { NewStorySetupScreen } from './components/modals/NewStorySetupScreen';
 import { Loader2, CheckCircle2 } from 'lucide-react';
 import type { ThemeMode } from './types/manuscript';
 
@@ -29,6 +30,8 @@ export function App() {
 
   // Guest / Direct Mode flag
   const [isGuestMode, setIsGuestMode] = useState<boolean>(false);
+  // Flag indicating if author has completed kickoff wizard
+  const [hasEnteredCanvas, setHasEnteredCanvas] = useState<boolean>(false);
 
   // Story & Manuscript state (synced with user ID)
   const {
@@ -48,6 +51,7 @@ export function App() {
     reorderChapters,
     switchStory,
     createNewStory,
+    createStoryWithSetup,
     deleteStory,
     generateChaptersFromOverview,
     manualSaveAndSnapshot,
@@ -136,6 +140,24 @@ export function App() {
         onEmailRegister={registerWithEmail}
         onContinueAsGuest={() => setIsGuestMode(true)}
         isFirebaseConfigured={isFirebaseConfigured}
+      />
+    );
+  }
+
+  // Show Story Kickoff Setup Screen before entering the main editor canvas
+  if (!hasEnteredCanvas) {
+    return (
+      <NewStorySetupScreen
+        existingStories={stories}
+        onStartNewStory={async (setupData) => {
+          await createStoryWithSetup(setupData);
+          setHasEnteredCanvas(true);
+        }}
+        onContinueStory={(storyId) => {
+          switchStory(storyId);
+          setHasEnteredCanvas(true);
+        }}
+        onOpenDashboard={() => setIsDashboardOpen(true)}
       />
     );
   }

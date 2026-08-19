@@ -1,11 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Story, Chapter, Snapshot, SyncState } from '../types/manuscript';
-import { indexedDBAdapter } from '../services/storage/IndexedDBAdapter';
 import { createFirestoreAdapter } from '../services/storage/FirestoreAdapter';
 import { parseOverviewToChapters } from '../services/parser/outlineParser';
 
 export function useStory(userId: string | null = null) {
-  // Dynamically select storage adapter based on authentication
   const storage = useRef(createFirestoreAdapter(userId));
 
   useEffect(() => {
@@ -126,7 +124,7 @@ export function useStory(userId: string | null = null) {
     });
   }, []);
 
-  // Standard Manual Save + Version Snapshot trigger (Ctrl+S / Cmd+S or Save Button)
+  // Standard Manual Save + Version Snapshot trigger
   const manualSaveAndSnapshot = useCallback(async (customLabel?: string) => {
     if (!activeStory) return;
     setSyncState('saving');
@@ -227,42 +225,66 @@ export function useStory(userId: string | null = null) {
     setLoading(false);
   }, [stories]);
 
-  // Create Story
-  const createNewStory = useCallback(async (title: string, idea = '') => {
+  // Create Story with Full Setup Meta & Parsed Chapters
+  const createStoryWithSetup = useCallback(async (data: {
+    title: string;
+    idea: string;
+    overview: string;
+    targetWordCount: number;
+    coverImage?: string;
+  }) => {
+    setLoading(true);
     const now = Date.now();
     const newStory: Story = {
       id: 'story-' + now + '-' + Math.random().toString(36).substr(2, 4),
-      title: title || 'New Story Manuscript',
-      storyIdea: idea,
-      storyOverview: '# Act I: Opening\n- Scene 1 setup',
+      title: data.title || 'New Story Manuscript',
+      storyIdea: data.idea || '',
+      storyOverview: data.overview || '# Act I: Opening\n- Scene 1 setup',
       totalWordCount: 0,
-      targetWordCount: 50000,
+      targetWordCount: data.targetWordCount || 50000,
+      coverImage: data.coverImage,
       createdAt: now,
       updatedAt: now,
     };
 
-    const firstChapter: Chapter = {
-      id: 'ch-' + now + '-1',
-      storyId: newStory.id,
-      order: 1,
-      title: 'Chapter 1: The Inciting Incident',
-      overview: 'Introduce main characters and setting.',
-      content: '<p></p>',
-      wordCount: 0,
-      targetWordCount: 2500,
-      updatedAt: now,
-    };
+    // Auto-parse chapters from overview if provided
+    let initialChapters = parseOverviewToChapters(newStory.id, newStory.storyOverview, 1);
+    if (initialChapters.length === 0) {
+      initialChapters = [{
+        id: 'ch-' + now + '-1',
+        storyId: newStory.id,
+        order: 1,
+        title: 'Chapter 1: The Inciting Incident',
+        overview: 'Introduce main characters and setting.',
+        content: '<p></p>',
+        wordCount: 0,
+        targetWordCount: 2500,
+        updatedAt: now,
+      }];
+    }
 
     await storage.current.saveStory(newStory);
-    await storage.current.saveChapter(firstChapter);
+    await storage.current.saveChapters(initialChapters);
 
     const all = await storage.current.getStories();
     setStories(all);
     setActiveStory(newStory);
-    setChapters([firstChapter]);
-    setActiveChapterId(firstChapter.id);
+    setChapters(initialChapters);
+    setActiveChapterId(initialChapters[0].id);
     setSnapshots([]);
+    setLoading(false);
+    return newStory;
   }, []);
+
+  // Simple Create Story fallback
+  const createNewStory = useCallback(async (title: string, idea = '') => {
+    return await createStoryWithSetup({
+      title,
+      idea,
+      overview: '# Act I: Opening\n- Scene 1 setup',
+      targetWordCount: 50000,
+    });
+  }, [createStoryWithSetup]);
 
   // Delete Story
   const deleteStory = useCallback(async (storyId: string) => {
@@ -322,6 +344,7 @@ export function useStory(userId: string | null = null) {
     reorderChapters,
     switchStory,
     createNewStory,
+    createStoryWithSetup,
     deleteStory,
     generateChaptersFromOverview,
     manualSaveAndSnapshot,
