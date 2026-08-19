@@ -1,0 +1,122 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-zinc-950 text-zinc-100 antialiased selection:bg-indigo-500/30 selection:text-indigo-200 font-sans overflow-hidden;
+  }
+
+  html.light body {
+    @apply bg-zinc-50 text-zinc-900 selection:bg-indigo-100 selection:text-indigo-900;
+  }
+}
+
+/* Minimal Modern Scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(161, 161, 170, 0.2);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(161, 161, 170, 0.4);
+}
+
+/* Tiptap Prose Canvas - Modern Clean & Minimal */
+.ProseMirror {
+  outline: none !important;
+  min-height: 480px;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+  font-size: 1.0625rem; /* 17px clean modern reading size */
+  line-height: 1.8;
+  color: #f4f4f5;
+}
+
+html.light .ProseMirror {
+  color: #18181b;
+}
+
+.ProseMirror p {
+  margin-bottom: 1.2em;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  color: #71717a;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  font-style: italic;
+}
+
+.ProseMirror h1 {
+  font-size: 1.875rem;
+  font-weight: 700;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  color: #fafafa;
+  letter-spacing: -0.02em;
+}
+
+html.light .ProseMirror h1 {
+  color: #09090b;
+}
+
+.ProseMirror h2 {
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin-top: 1.3em;
+  margin-bottom: 0.4em;
+  color: #f4f4f5;
+  letter-spacing: -0.01em;
+}
+
+html.light .ProseMirror h2 {
+  color: #18181b;
+}
+
+.ProseMirror h3 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin-top: 1.1em;
+  margin-bottom: 0.3em;
+  color: #e4e4e7;
+}
+
+html.light .ProseMirror h3 {
+  color: #27272a;
+}
+
+.ProseMirror blockquote {
+  border-left: 2px solid #6366f1;
+  padding-left: 1rem;
+  font-style: italic;
+  color: #a1a1aa;
+  margin: 1.2em 0;
+}
+
+html.light .ProseMirror blockquote {
+  color: #52525b;
+}
+
+.ProseMirror ul {
+  list-style-type: disc;
+  padding-left: 1.4rem;
+  margin: 0.8em 0;
+}
+
+.ProseMirror ol {
+  list-style-type: decimal;
+  padding-left: 1.4rem;
+  margin: 0.8em 0;
+}
+
+.ProseMirror li {
+  margin-bottom: 0.3em;
+}
