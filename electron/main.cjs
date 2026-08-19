@@ -1,4 +1,5 @@
 const { app, BrowserWindow, Menu, shell } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const path = require('path');
 
 let mainWindow;
@@ -118,6 +119,13 @@ function setApplicationMenu() {
 app.whenReady().then(() => {
   setApplicationMenu();
   createWindow();
+
+  // Check for auto-updates in production from GitHub Releases
+  if (app.isPackaged) {
+    autoUpdater.checkForUpdatesAndNotify().catch((err) => {
+      console.log('Auto update check skipped or failed:', err.message);
+    });
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

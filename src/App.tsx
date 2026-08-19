@@ -13,11 +13,12 @@ import { ExportModal } from './components/modals/ExportModal';
 import { FindReplaceModal } from './components/modals/FindReplaceModal';
 import { DownloadAppModal } from './components/modals/DownloadAppModal';
 import { AuthModal } from './components/auth/AuthModal';
+import { LandingPage } from './components/auth/LandingPage';
 import { Loader2, CheckCircle2 } from 'lucide-react';
 import type { ThemeMode } from './types/manuscript';
 
 export function App() {
-  const { user, isFirebaseConfigured, loginWithEmail, registerWithEmail, logout } = useAuth();
+  const { user, loading: authLoading, isFirebaseConfigured, loginWithEmail, registerWithEmail, logout } = useAuth();
 
   const {
     loading,
@@ -41,6 +42,11 @@ export function App() {
     manualSaveAndSnapshot,
     restoreSnapshot,
   } = useStory();
+
+  // Guest bypass state for unauthenticated users
+  const [hasContinuedAsGuest, setHasContinuedAsGuest] = useState<boolean>(() => {
+    return sessionStorage.getItem('enreda_guest_continued') === 'true';
+  });
 
   // Layout & Theme states (Default to Light Mode)
   const [theme, setTheme] = useState<ThemeMode>(() => {
@@ -108,12 +114,27 @@ export function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [focusMode, handleManualSave]);
 
-  if (loading || !activeStory) {
+  if (loading || authLoading || !activeStory) {
     return (
       <div className="h-screen w-screen bg-zinc-50 dark:bg-zinc-950 flex flex-col items-center justify-center text-zinc-700 dark:text-zinc-300 gap-3">
         <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
         <span className="text-sm font-medium">Loading Enreda...</span>
       </div>
+    );
+  }
+
+  // Render Landing Page for first-time visitors / unauthenticated users
+  if (!user && !hasContinuedAsGuest) {
+    return (
+      <LandingPage
+        onEmailSignIn={loginWithEmail}
+        onEmailRegister={registerWithEmail}
+        onContinueAsGuest={() => {
+          sessionStorage.setItem('enreda_guest_continued', 'true');
+          setHasContinuedAsGuest(true);
+        }}
+        isFirebaseConfigured={isFirebaseConfigured}
+      />
     );
   }
 

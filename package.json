@@ -44,11 +44,19 @@
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
     "lucide-react": "^1.33.0",
-    "tailwind-merge": "^3.6.0"
+    "tailwind-merge": "^3.6.0",
+    "electron-updater": "^6.3.9"
   },
   "build": {
     "appId": "com.enreda.app",
     "productName": "Enreda",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "jacob6826",
+        "repo": "Enreda"
+      }
+    ],
     "directories": {
       "output": "release"
     },
