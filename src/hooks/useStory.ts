@@ -1,9 +1,17 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { Story, Chapter, Snapshot, SyncState } from '../types/manuscript';
-import { indexedDBAdapter as storage } from '../services/storage/IndexedDBAdapter';
+import { indexedDBAdapter } from '../services/storage/IndexedDBAdapter';
+import { createFirestoreAdapter } from '../services/storage/FirestoreAdapter';
 import { parseOverviewToChapters } from '../services/parser/outlineParser';
 
-export function useStory() {
+export function useStory(userId: string | null = null) {
+  // Dynamically select storage adapter based on authentication
+  const storage = useRef(createFirestoreAdapter(userId));
+
+  useEffect(() => {
+    storage.current = createFirestoreAdapter(userId);
+  }, [userId]);
+
   const [stories, setStories] = useState<Story[]>([]);
   const [activeStory, setActiveStory] = useState<Story | null>(null);
   const [chapters, setChapters] = useState<Chapter[]>([]);
@@ -20,22 +28,22 @@ export function useStory() {
   const refreshStories = useCallback(async (preferredStoryId?: string) => {
     try {
       setLoading(true);
-      const initialStory = await storage.seedInitialDataIfEmpty();
-      const allStories = await storage.getStories();
+      const initialStory = await storage.current.seedInitialDataIfEmpty();
+      const allStories = await storage.current.getStories();
       setStories(allStories);
 
       const targetStoryId = preferredStoryId || activeStory?.id || initialStory.id;
       const targetStory = allStories.find((s) => s.id === targetStoryId) || allStories[0] || initialStory;
       
       setActiveStory(targetStory);
-      const loadedChapters = await storage.getChapters(targetStory.id);
+      const loadedChapters = await storage.current.getChapters(targetStory.id);
       setChapters(loadedChapters);
       
       if (loadedChapters.length > 0 && (!activeChapterId || !loadedChapters.some(c => c.id === activeChapterId))) {
         setActiveChapterId(loadedChapters[0].id);
       }
 
-      const loadedSnapshots = await storage.getSnapshots(targetStory.id);
+      const loadedSnapshots = await storage.current.getSnapshots(targetStory.id);
       setSnapshots(loadedSnapshots);
     } catch (err) {
       console.error('Failed to load story data:', err);
@@ -48,15 +56,15 @@ export function useStory() {
   useEffect(() => {
     refreshStories();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [userId]);
 
-  // 15-minute Automatic Snapshot timer following industry standards
+  // 15-minute Automatic Snapshot timer
   useEffect(() => {
     if (!activeStory) return;
     snapshotTimerRef.current = setInterval(() => {
       const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      storage.createSnapshot(activeStory.id, `Auto-Save Checkpoint (${timeStr})`)
-        .then(() => storage.getSnapshots(activeStory.id))
+      storage.current.createSnapshot(activeStory.id, `Auto-Save Checkpoint (${timeStr})`)
+        .then(() => storage.current.getSnapshots(activeStory.id))
         .then(setSnapshots)
         .catch(console.error);
     }, 15 * 60 * 1000);
@@ -79,7 +87,7 @@ export function useStory() {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(async () => {
       try {
-        await storage.saveStory(updated);
+        await storage.current.saveStory(updated);
         setStories(prev => prev.map(s => s.id === updated.id ? updated : s));
         setSyncState('synced');
         setLastSavedTime(Date.now());
@@ -100,8 +108,8 @@ export function useStory() {
           if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
           saveTimerRef.current = setTimeout(async () => {
             try {
-              await storage.saveChapter(updatedCh);
-              const allChs = await storage.getChapters(updatedCh.storyId);
+              await storage.current.saveChapter(updatedCh);
+              const allChs = await storage.current.getChapters(updatedCh.storyId);
               const totalWords = allChs.reduce((sum, c) => sum + c.wordCount, 0);
               setActiveStory((s) => s ? { ...s, totalWordCount: totalWords, updatedAt: Date.now() } : null);
               setSyncState('synced');
@@ -123,19 +131,16 @@ export function useStory() {
     if (!activeStory) return;
     setSyncState('saving');
 
-    // Clear any pending debounced timers
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
 
-    // Save active story and all current chapters immediately
-    await storage.saveStory(activeStory);
-    await storage.saveChapters(chapters);
+    await storage.current.saveStory(activeStory);
+    await storage.current.saveChapters(chapters);
 
-    // Create standard version snapshot
     const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     const label = customLabel?.trim() || `Manual Save (${timeStr})`;
     
-    await storage.createSnapshot(activeStory.id, label);
-    const updatedSnapshots = await storage.getSnapshots(activeStory.id);
+    await storage.current.createSnapshot(activeStory.id, label);
+    const updatedSnapshots = await storage.current.getSnapshots(activeStory.id);
     
     setSnapshots(updatedSnapshots);
     setSyncState('synced');
@@ -164,7 +169,7 @@ export function useStory() {
     setActiveChapterId(newChapter.id);
 
     try {
-      await storage.saveChapter(newChapter);
+      await storage.current.saveChapter(newChapter);
       setSyncState('synced');
       setLastSavedTime(Date.now());
     } catch {
@@ -184,7 +189,7 @@ export function useStory() {
     }
 
     try {
-      await storage.deleteChapter(chapterId);
+      await storage.current.deleteChapter(chapterId);
       setSyncState('synced');
       setLastSavedTime(Date.now());
     } catch {
@@ -198,7 +203,7 @@ export function useStory() {
     setChapters(updated);
     setSyncState('saving');
     try {
-      await storage.saveChapters(updated);
+      await storage.current.saveChapters(updated);
       setSyncState('synced');
       setLastSavedTime(Date.now());
     } catch {
@@ -212,12 +217,12 @@ export function useStory() {
     const target = stories.find(s => s.id === storyId);
     if (!target) return;
     setActiveStory(target);
-    const storyChapters = await storage.getChapters(target.id);
+    const storyChapters = await storage.current.getChapters(target.id);
     setChapters(storyChapters);
     if (storyChapters.length > 0) {
       setActiveChapterId(storyChapters[0].id);
     }
-    const storySnapshots = await storage.getSnapshots(target.id);
+    const storySnapshots = await storage.current.getSnapshots(target.id);
     setSnapshots(storySnapshots);
     setLoading(false);
   }, [stories]);
@@ -248,10 +253,10 @@ export function useStory() {
       updatedAt: now,
     };
 
-    await storage.saveStory(newStory);
-    await storage.saveChapter(firstChapter);
+    await storage.current.saveStory(newStory);
+    await storage.current.saveChapter(firstChapter);
 
-    const all = await storage.getStories();
+    const all = await storage.current.getStories();
     setStories(all);
     setActiveStory(newStory);
     setChapters([firstChapter]);
@@ -261,8 +266,8 @@ export function useStory() {
 
   // Delete Story
   const deleteStory = useCallback(async (storyId: string) => {
-    await storage.deleteStory(storyId);
-    const remaining = await storage.getStories();
+    await storage.current.deleteStory(storyId);
+    const remaining = await storage.current.getStories();
     setStories(remaining);
     if (remaining.length > 0) {
       switchStory(remaining[0].id);
@@ -280,7 +285,7 @@ export function useStory() {
     setSyncState('saving');
     const merged = [...chapters, ...generated];
     setChapters(merged);
-    await storage.saveChapters(generated);
+    await storage.current.saveChapters(generated);
     setSyncState('synced');
     setLastSavedTime(Date.now());
   }, [activeStory, chapters]);
@@ -288,7 +293,7 @@ export function useStory() {
   // Restore snapshot
   const restoreSnapshot = useCallback(async (snapshotId: string) => {
     setLoading(true);
-    const restored = await storage.restoreSnapshot(snapshotId);
+    const restored = await storage.current.restoreSnapshot(snapshotId);
     if (restored) {
       setActiveStory(restored.story);
       setChapters(restored.chapters);

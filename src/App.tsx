@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useStory } from './hooks/useStory';
+import { useAuth } from './hooks/useAuth';
 import { useWordCount } from './hooks/useWordCount';
 import { HeaderBar } from './components/layout/HeaderBar';
 import { LeftSidebar } from './components/layout/LeftSidebar';
@@ -10,12 +11,28 @@ import { StoryDashboardModal } from './components/modals/StoryDashboardModal';
 import { SnapshotModal } from './components/modals/SnapshotModal';
 import { ExportModal } from './components/modals/ExportModal';
 import { FindReplaceModal } from './components/modals/FindReplaceModal';
+import { AuthModal } from './components/auth/AuthModal';
+import { LandingPage } from './components/auth/LandingPage';
 import { Loader2, CheckCircle2 } from 'lucide-react';
 import type { ThemeMode } from './types/manuscript';
 
 export function App() {
+  // Authentication state
   const {
-    loading,
+    user,
+    loading: authLoading,
+    isFirebaseConfigured,
+    loginWithEmail,
+    registerWithEmail,
+    logout,
+  } = useAuth();
+
+  // Guest / Direct Mode flag
+  const [isGuestMode, setIsGuestMode] = useState<boolean>(false);
+
+  // Story & Manuscript state (synced with user ID)
+  const {
+    loading: storyLoading,
     stories,
     activeStory,
     chapters,
@@ -35,7 +52,7 @@ export function App() {
     generateChaptersFromOverview,
     manualSaveAndSnapshot,
     restoreSnapshot,
-  } = useStory();
+  } = useStory(user ? user.uid : null);
 
   // Layout & Theme states (Default to Light Mode)
   const [theme, setTheme] = useState<ThemeMode>(() => {
@@ -52,6 +69,7 @@ export function App() {
   const [isSnapshotOpen, setIsSnapshotOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
 
   // Synchronize HTML element theme class
   useEffect(() => {
@@ -101,11 +119,32 @@ export function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [focusMode, handleManualSave]);
 
-  if (loading || !activeStory) {
+  if (authLoading) {
     return (
       <div className="h-screen w-screen bg-zinc-50 dark:bg-zinc-950 flex flex-col items-center justify-center text-zinc-700 dark:text-zinc-300 gap-3">
         <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
         <span className="text-sm font-medium">Loading Enreda...</span>
+      </div>
+    );
+  }
+
+  // Show Primary Landing Page if not authenticated and hasn't chosen guest mode
+  if (!user && !isGuestMode) {
+    return (
+      <LandingPage
+        onEmailSignIn={loginWithEmail}
+        onEmailRegister={registerWithEmail}
+        onContinueAsGuest={() => setIsGuestMode(true)}
+        isFirebaseConfigured={isFirebaseConfigured}
+      />
+    );
+  }
+
+  if (storyLoading || !activeStory) {
+    return (
+      <div className="h-screen w-screen bg-zinc-50 dark:bg-zinc-950 flex flex-col items-center justify-center text-zinc-700 dark:text-zinc-300 gap-3">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+        <span className="text-sm font-medium">Preparing Manuscript Canvas...</span>
       </div>
     );
   }
@@ -122,11 +161,11 @@ export function App() {
           story={activeStory}
           syncState={syncState}
           theme={theme}
+          user={user}
+          onOpenAuth={() => setIsAuthOpen(true)}
           onToggleTheme={toggleTheme}
           onSyncNow={handleManualSave}
           onManualSave={handleManualSave}
-          rightInspectorOpen={rightInspectorOpen}
-          onToggleRightInspector={() => setRightInspectorOpen(!rightInspectorOpen)}
           onOpenDashboard={() => setIsDashboardOpen(true)}
           onOpenSearch={() => setIsSearchOpen(true)}
           onOpenSnapshot={() => setIsSnapshotOpen(true)}
@@ -236,6 +275,16 @@ export function App() {
       )}
 
       {/* Modals */}
+      <AuthModal
+        isOpen={isAuthOpen}
+        onClose={() => setIsAuthOpen(false)}
+        user={user}
+        isFirebaseConfigured={isFirebaseConfigured}
+        onEmailSignIn={loginWithEmail}
+        onEmailRegister={registerWithEmail}
+        onLogout={logout}
+      />
+
       <StoryDashboardModal
         isOpen={isDashboardOpen}
         onClose={() => setIsDashboardOpen(false)}
