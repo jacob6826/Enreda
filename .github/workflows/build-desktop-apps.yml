@@ -2,6 +2,8 @@ name: Build Desktop Apps (macOS & Windows)
 
 on:
   push:
+    branches:
+      - main
     tags:
       - 'v*'
   workflow_dispatch:
@@ -36,13 +38,11 @@ jobs:
           fi
         shell: bash
 
-      - name: Release App Installers
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Upload Desktop App Installers
+        uses: actions/upload-artifact@v4
         with:
-          files: |
+          name: desktop-app-${{ matrix.os }}
+          path: |
             release/*.dmg
             release/*.exe
             release/*.zip
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
