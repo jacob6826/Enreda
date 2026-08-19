@@ -9,6 +9,9 @@
     "dev:electron": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
     "build": "tsc && vite build",
     "build:mac": "npm run build && electron-builder --mac",
+    "build:mac:arm64": "npm run build && electron-builder --mac --arm64",
+    "build:mac:x64": "npm run build && electron-builder --mac --x64",
+    "build:mac:universal": "npm run build && electron-builder --mac --universal",
     "build:win": "npm run build && electron-builder --win",
     "preview": "vite preview"
   },
@@ -55,6 +58,7 @@
     ],
     "mac": {
       "category": "public.app-category.productivity",
+      "artifactName": "Manuscript-Studio.${ext}",
       "target": [
         "dmg",
         "zip"
@@ -64,6 +68,7 @@
       "target": [
         "portable"
       ],
+      "artifactName": "Manuscript-Studio.${ext}",
       "signAndEditExecutable": false
     }
   }

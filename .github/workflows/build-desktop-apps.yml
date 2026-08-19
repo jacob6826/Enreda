@@ -1,4 +1,4 @@
-name: Build Desktop Apps (macOS & Windows)
+name: Build & Release Desktop Apps (macOS & Windows)
 
 on:
   push:
@@ -7,6 +7,9 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -39,7 +42,7 @@ jobs:
           fi
         shell: bash
 
-      - name: Upload Desktop App Installers
+      - name: Upload Desktop App Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: desktop-app-${{ matrix.os }}
@@ -47,3 +50,15 @@ jobs:
             release/*.dmg
             release/*.exe
             release/*.zip
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+        with:
+          files: |
+            release/*.dmg
+            release/*.exe
+            release/*.zip
+          generate_release_notes: true
+          draft: false
+          prerelease: false
