@@ -12,20 +12,47 @@ export interface AuthState {
   loading: boolean;
 }
 
+function handleAuthError(err: any): never {
+  const code = err?.code || '';
+  if (code === 'auth/api-key-not-valid' || code === 'auth/invalid-api-key' || !isFirebaseConfigured) {
+    throw new Error(
+      'Firebase Web App credentials are missing or invalid. Please copy your Web App config from Firebase Console (Project Settings -> General -> Your Apps) into your Netlify Environment Variables or local .env file.'
+    );
+  }
+  if (code === 'auth/user-not-found' || code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
+    throw new Error('Invalid email or password. Please try again or create an account.');
+  }
+  if (code === 'auth/email-already-in-use') {
+    throw new Error('An account with this email already exists. Click "Sign In" to log in.');
+  }
+  if (code === 'auth/weak-password') {
+    throw new Error('Password should be at least 6 characters long.');
+  }
+  throw new Error(err.message || 'Authentication failed. Please check your credentials.');
+}
+
 export async function loginWithEmail(email: string, pass: string): Promise<User> {
   if (!isFirebaseConfigured || !auth) {
-    throw new Error('Firebase API key is not configured. Please add your credentials in .env or Netlify settings.');
+    handleAuthError({ code: 'auth/api-key-not-valid' });
   }
-  const result = await signInWithEmailAndPassword(auth, email, pass);
-  return result.user;
+  try {
+    const result = await signInWithEmailAndPassword(auth, email, pass);
+    return result.user;
+  } catch (err) {
+    handleAuthError(err);
+  }
 }
 
 export async function registerWithEmail(email: string, pass: string): Promise<User> {
   if (!isFirebaseConfigured || !auth) {
-    throw new Error('Firebase API key is not configured. Please add your credentials in .env or Netlify settings.');
+    handleAuthError({ code: 'auth/api-key-not-valid' });
   }
-  const result = await createUserWithEmailAndPassword(auth, email, pass);
-  return result.user;
+  try {
+    const result = await createUserWithEmailAndPassword(auth, email, pass);
+    return result.user;
+  } catch (err) {
+    handleAuthError(err);
+  }
 }
 
 export async function logoutUser(): Promise<void> {
