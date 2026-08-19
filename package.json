@@ -1,5 +1,5 @@
 {
-  "name": "manuscript-studio",
+  "name": "enreda",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -47,8 +47,8 @@
     "tailwind-merge": "^3.6.0"
   },
   "build": {
-    "appId": "com.manuscriptstudio.app",
-    "productName": "Manuscript Studio",
+    "appId": "com.enreda.app",
+    "productName": "Enreda",
     "directories": {
       "output": "release"
     },
@@ -58,7 +58,7 @@
     ],
     "mac": {
       "category": "public.app-category.productivity",
-      "artifactName": "Manuscript-Studio.${ext}",
+      "artifactName": "Enreda.${ext}",
       "target": [
         "dmg",
         "zip"
@@ -68,7 +68,7 @@
       "target": [
         "portable"
       ],
-      "artifactName": "Manuscript-Studio.${ext}",
+      "artifactName": "Enreda.${ext}",
       "signAndEditExecutable": false
     }
   }

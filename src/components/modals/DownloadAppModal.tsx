@@ -11,8 +11,8 @@ interface DownloadAppModalProps {
 export const DownloadAppModal: React.FC<DownloadAppModalProps> = ({
   isOpen,
   onClose,
-  macDownloadUrl = 'https://github.com/jacob6826/Enreda/releases/latest/download/Manuscript-Studio.dmg',
-  winDownloadUrl = 'https://github.com/jacob6826/Enreda/releases/latest/download/Manuscript-Studio.exe',
+  macDownloadUrl = 'https://github.com/jacob6826/Enreda/releases/latest/download/Enreda.dmg',
+  winDownloadUrl = 'https://github.com/jacob6826/Enreda/releases/latest/download/Enreda.exe',
 }) => {
   if (!isOpen) return null;
 
