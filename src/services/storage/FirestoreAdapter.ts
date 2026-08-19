@@ -29,42 +29,23 @@ export function createFirestoreAdapter(userId: string | null): StorageAdapter {
   return {
     async getStories(): Promise<Story[]> {
       try {
+        console.log(`[FirestoreSync] Fetching stories for user: ${userId}`);
         const q = query(storiesCol, orderBy('updatedAt', 'desc'));
         const snap = await getDocs(q);
-        const stories: Story[] = [];
+        const firestoreStories: Story[] = [];
         snap.forEach((d) => {
           const data = d.data() as Story;
-          stories.push({ ...data, targetWordCount: data.targetWordCount || 50000 });
+          firestoreStories.push({ ...data, targetWordCount: data.targetWordCount || 50000 });
         });
 
-        // Get local IndexedDB stories to auto-sync into Firestore if needed
+        // Get local stories from IndexedDB
         const localStories = await indexedDBAdapter.getStories();
 
-        if (stories.length > 0) {
-          // Sync any local story that isn't in Firestore yet
-          for (const localStory of localStories) {
-            if (!stories.some((s) => s.id === localStory.id)) {
-              try {
-                await setDoc(doc(storiesCol, localStory.id), localStory, { merge: true });
-                const localChs = await indexedDBAdapter.getChapters(localStory.id);
-                if (localChs.length > 0) {
-                  const batch = writeBatch(db);
-                  localChs.forEach((ch) => batch.set(doc(chaptersCol, ch.id), ch, { merge: true }));
-                  await batch.commit();
-                }
-                stories.push(localStory);
-              } catch (e) {
-                console.warn('Failed to push local story to Firestore:', e);
-              }
-            }
-          }
-          return stories;
-        }
-
-        // If Firestore is empty, upload all local stories to Firestore
-        if (localStories.length > 0) {
-          for (const localStory of localStories) {
+        // 1. Sync any local stories to Firestore if they don't exist in Firestore yet
+        for (const localStory of localStories) {
+          if (!firestoreStories.some((s) => s.id === localStory.id)) {
             try {
+              console.log(`[FirestoreSync] Uploading local story "${localStory.title}" (${localStory.id}) to Firestore`);
               await setDoc(doc(storiesCol, localStory.id), localStory, { merge: true });
               const localChs = await indexedDBAdapter.getChapters(localStory.id);
               if (localChs.length > 0) {
@@ -72,16 +53,27 @@ export function createFirestoreAdapter(userId: string | null): StorageAdapter {
                 localChs.forEach((ch) => batch.set(doc(chaptersCol, ch.id), ch, { merge: true }));
                 await batch.commit();
               }
+              firestoreStories.push(localStory);
             } catch (e) {
-              console.warn('Failed to seed Firestore from local data:', e);
+              console.warn('[FirestoreSync] Failed to upload local story to Firestore:', e);
             }
           }
-          return localStories;
         }
 
-        return await indexedDBAdapter.getStories();
+        // 2. Also cache Firestore stories locally into IndexedDB so offline mode works seamlessly
+        for (const fsStory of firestoreStories) {
+          await indexedDBAdapter.saveStory(fsStory);
+          const chs = await this.getChapters(fsStory.id);
+          await indexedDBAdapter.saveChapters(chs);
+        }
+
+        if (firestoreStories.length > 0) {
+          return firestoreStories;
+        }
+
+        return localStories;
       } catch (err) {
-        console.warn('Firestore getStories error, using local storage:', err);
+        console.warn('[FirestoreSync] getStories error, using local storage:', err);
         return await indexedDBAdapter.getStories();
       }
     },
@@ -101,16 +93,18 @@ export function createFirestoreAdapter(userId: string | null): StorageAdapter {
     async saveStory(story: Story): Promise<void> {
       await indexedDBAdapter.saveStory(story);
       try {
+        console.log(`[FirestoreSync] Saving story "${story.title}" (${story.id}) to Firestore`);
         const docRef = doc(storiesCol, story.id);
         await setDoc(docRef, story, { merge: true });
       } catch (err) {
-        console.warn('Firestore story save failed, changes cached locally:', err);
+        console.warn('[FirestoreSync] Story save error, cached locally:', err);
       }
     },
 
     async deleteStory(storyId: string): Promise<void> {
       await indexedDBAdapter.deleteStory(storyId);
       try {
+        console.log(`[FirestoreSync] Deleting story ${storyId} from Firestore`);
         await deleteDoc(doc(storiesCol, storyId));
         const chSnap = await getDocs(query(chaptersCol, where('storyId', '==', storyId)));
         if (db) {
@@ -119,7 +113,7 @@ export function createFirestoreAdapter(userId: string | null): StorageAdapter {
           await batch.commit();
         }
       } catch (err) {
-        console.warn('Firestore story deletion failed:', err);
+        console.warn('[FirestoreSync] Story deletion error:', err);
       }
     },
 
@@ -152,9 +146,10 @@ export function createFirestoreAdapter(userId: string | null): StorageAdapter {
     async saveChapter(chapter: Chapter): Promise<void> {
       await indexedDBAdapter.saveChapter(chapter);
       try {
+        console.log(`[FirestoreSync] Saving chapter "${chapter.title}" (${chapter.id}) to Firestore`);
         await setDoc(doc(chaptersCol, chapter.id), chapter, { merge: true });
       } catch (err) {
-        console.warn('Firestore chapter save failed:', err);
+        console.warn('[FirestoreSync] Chapter save error:', err);
       }
     },
 
@@ -162,6 +157,7 @@ export function createFirestoreAdapter(userId: string | null): StorageAdapter {
       await indexedDBAdapter.saveChapters(chapters);
       try {
         if (db && chapters.length > 0) {
+          console.log(`[FirestoreSync] Bulk saving ${chapters.length} chapters to Firestore`);
           const batch = writeBatch(db);
           chapters.forEach((ch) => {
             batch.set(doc(chaptersCol, ch.id), ch, { merge: true });
@@ -169,7 +165,7 @@ export function createFirestoreAdapter(userId: string | null): StorageAdapter {
           await batch.commit();
         }
       } catch (err) {
-        console.warn('Firestore bulk chapters save failed:', err);
+        console.warn('[FirestoreSync] Bulk chapters save error:', err);
       }
     },
 
@@ -178,7 +174,7 @@ export function createFirestoreAdapter(userId: string | null): StorageAdapter {
       try {
         await deleteDoc(doc(chaptersCol, chapterId));
       } catch (err) {
-        console.warn('Firestore chapter deletion failed:', err);
+        console.warn('[FirestoreSync] Chapter deletion error:', err);
       }
     },
 
@@ -201,7 +197,7 @@ export function createFirestoreAdapter(userId: string | null): StorageAdapter {
       try {
         await setDoc(doc(snapshotsCol, snap.id), snap);
       } catch (err) {
-        console.warn('Firestore snapshot creation failed:', err);
+        console.warn('[FirestoreSync] Snapshot creation error:', err);
       }
       return snap;
     },
@@ -215,7 +211,7 @@ export function createFirestoreAdapter(userId: string | null): StorageAdapter {
       try {
         await deleteDoc(doc(snapshotsCol, snapshotId));
       } catch (err) {
-        console.warn('Firestore snapshot deletion failed:', err);
+        console.warn('[FirestoreSync] Snapshot deletion error:', err);
       }
     },
 

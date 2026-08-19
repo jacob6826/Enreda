@@ -66,7 +66,7 @@ export function useStory(user?: User | null) {
     return () => {
       if (snapshotTimerRef.current) clearInterval(snapshotTimerRef.current);
     };
-  }, [activeStory]);
+  }, [storage, activeStory]);
 
   // Active chapter getter
   const activeChapter = chapters.find((c) => c.id === activeChapterId) || chapters[0] || null;
@@ -89,7 +89,7 @@ export function useStory(user?: User | null) {
         setSyncState('offline');
       }
     }, 1500);
-  }, [activeStory]);
+  }, [storage, activeStory]);
 
   // Update chapter content/overview/title with debounce
   const updateChapter = useCallback((chapterId: string, updates: Partial<Chapter>) => {
@@ -118,21 +118,18 @@ export function useStory(user?: User | null) {
         return ch;
       });
     });
-  }, []);
+  }, [storage]);
 
   // Standard Manual Save + Version Snapshot trigger (Ctrl+S / Cmd+S or Save Button)
   const manualSaveAndSnapshot = useCallback(async (customLabel?: string) => {
     if (!activeStory) return;
     setSyncState('saving');
 
-    // Clear any pending debounced timers
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
 
-    // Save active story and all current chapters immediately
     await storage.saveStory(activeStory);
     await storage.saveChapters(chapters);
 
-    // Create standard version snapshot
     const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     const label = customLabel?.trim() || `Manual Save (${timeStr})`;
     
@@ -142,7 +139,7 @@ export function useStory(user?: User | null) {
     setSnapshots(updatedSnapshots);
     setSyncState('synced');
     setLastSavedTime(Date.now());
-  }, [activeStory, chapters]);
+  }, [storage, activeStory, chapters]);
 
   // Add Chapter
   const addChapter = useCallback(async () => {
@@ -172,7 +169,7 @@ export function useStory(user?: User | null) {
     } catch {
       setSyncState('offline');
     }
-  }, [activeStory, chapters]);
+  }, [storage, activeStory, chapters]);
 
   // Delete Chapter
   const deleteChapter = useCallback(async (chapterId: string) => {
@@ -192,7 +189,7 @@ export function useStory(user?: User | null) {
     } catch {
       setSyncState('offline');
     }
-  }, [activeStory, chapters, activeChapterId]);
+  }, [storage, activeStory, chapters, activeChapterId]);
 
   // Reorder Chapters
   const reorderChapters = useCallback(async (reorderedList: Chapter[]) => {
@@ -206,7 +203,7 @@ export function useStory(user?: User | null) {
     } catch {
       setSyncState('offline');
     }
-  }, []);
+  }, [storage]);
 
   // Switch Story
   const switchStory = useCallback(async (storyId: string) => {
@@ -222,7 +219,7 @@ export function useStory(user?: User | null) {
     const storySnapshots = await storage.getSnapshots(target.id);
     setSnapshots(storySnapshots);
     setLoading(false);
-  }, [stories]);
+  }, [storage, stories]);
 
   // Create Story
   const createNewStory = useCallback(async (title: string, idea = '') => {
@@ -259,7 +256,7 @@ export function useStory(user?: User | null) {
     setChapters([firstChapter]);
     setActiveChapterId(firstChapter.id);
     setSnapshots([]);
-  }, []);
+  }, [storage]);
 
   // Delete Story
   const deleteStory = useCallback(async (storyId: string) => {
@@ -271,7 +268,7 @@ export function useStory(user?: User | null) {
     } else {
       refreshStories();
     }
-  }, [switchStory, refreshStories]);
+  }, [storage, switchStory, refreshStories]);
 
   // Generate Chapters from Story Overview
   const generateChaptersFromOverview = useCallback(async () => {
@@ -285,7 +282,7 @@ export function useStory(user?: User | null) {
     await storage.saveChapters(generated);
     setSyncState('synced');
     setLastSavedTime(Date.now());
-  }, [activeStory, chapters]);
+  }, [storage, activeStory, chapters]);
 
   // Restore snapshot
   const restoreSnapshot = useCallback(async (snapshotId: string) => {
@@ -299,7 +296,7 @@ export function useStory(user?: User | null) {
       }
     }
     setLoading(false);
-  }, []);
+  }, [storage]);
 
   return {
     loading,
