@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
+  FolderOpen,
   Search,
   Camera,
   Download,
@@ -9,41 +10,44 @@ import {
   Moon,
   ChevronDown,
   Menu,
+  Check,
   RefreshCw,
   CloudOff,
-  User as UserIcon,
+  PanelRight,
+  Laptop,
 } from 'lucide-react';
-import type { User } from 'firebase/auth';
 import type { Story, SyncState, ThemeMode } from '../../types/manuscript';
 
 interface HeaderBarProps {
   story: Story | null;
   syncState: SyncState;
   theme: ThemeMode;
-  user: User | null;
-  onOpenAuth: () => void;
   onToggleTheme: () => void;
   onSyncNow: () => void;
   onManualSave: () => void;
+  rightInspectorOpen: boolean;
+  onToggleRightInspector: () => void;
   onOpenDashboard: () => void;
   onOpenSearch: () => void;
   onOpenSnapshot: () => void;
   onOpenExport: () => void;
+  onOpenDownloadApp?: () => void;
 }
 
 export const HeaderBar: React.FC<HeaderBarProps> = ({
   story,
   syncState,
   theme,
-  user,
-  onOpenAuth,
   onToggleTheme,
   onSyncNow,
   onManualSave,
+  rightInspectorOpen,
+  onToggleRightInspector,
   onOpenDashboard,
   onOpenSearch,
   onOpenSnapshot,
   onOpenExport,
+  onOpenDownloadApp,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -201,17 +205,38 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
                 <span>Export Manuscript (.md, .docx, .pdf)</span>
               </button>
 
+              {onOpenDownloadApp && (
+                <button
+                  onClick={() => {
+                    onOpenDownloadApp();
+                    setMenuOpen(false);
+                  }}
+                  className="w-full px-3.5 py-2 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center justify-between transition-colors text-indigo-600 dark:text-indigo-400 font-medium"
+                >
+                  <div className="flex items-center gap-2">
+                    <Laptop className="w-4 h-4 text-indigo-500" />
+                    <span>Get Desktop App (Mac/Win)</span>
+                  </div>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/60 font-semibold">
+                    New
+                  </span>
+                </button>
+              )}
+
               <div className="my-1 border-t border-zinc-100 dark:border-zinc-800/80" />
 
               <button
                 onClick={() => {
-                  onOpenAuth();
+                  onToggleRightInspector();
                   setMenuOpen(false);
                 }}
-                className="w-full px-3.5 py-2 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center gap-2 transition-colors"
+                className="w-full px-3.5 py-2 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center justify-between transition-colors"
               >
-                <UserIcon className="w-4 h-4 text-indigo-500" />
-                <span>{user ? 'Account Settings' : 'Sign In / Account'}</span>
+                <div className="flex items-center gap-2">
+                  <PanelRight className="w-4 h-4 text-zinc-400" />
+                  <span>Right Overview Inspector</span>
+                </div>
+                {rightInspectorOpen && <Check className="w-3.5 h-3.5 text-indigo-500" />}
               </button>
             </div>
           )}

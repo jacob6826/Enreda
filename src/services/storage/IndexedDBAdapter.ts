@@ -151,32 +151,77 @@ export const indexedDBAdapter: StorageAdapter = {
     }
 
     const now = Date.now();
-    const cleanStory: Story = {
-      id: 'story-1',
-      title: 'My First Story',
-      storyIdea: '',
-      storyOverview: `# Act I: The Beginning\n- Introduce main character\n- Inciting incident`,
-      totalWordCount: 0,
-      targetWordCount: 50000,
+    const demoStory: Story = {
+      id: 'story-demo-1',
+      title: 'The Starlight Dragon',
+      storyIdea: 'An illustrated children\'s tale about Barnaby the small blue dragon who loses his glow and embarks on a nighttime quest across Whispering Woods.',
+      storyOverview: `# Act I: The Dimming Spark
+* **Setting**: The cozy hollow oak tree in Whispering Woods.
+* **Protagonist**: Barnaby - a friendly little blue dragon who shines like a nightlight.
+* **Inciting Beat**: Waking up on the eve of the Starlight Festival to find his tail spark has gone out!
+
+# Act II: The Quest for Moon-Dew
+* **Midpoint Journey**: Journeying to the Silver Pond. Meeting Pip the Barn Owl and Oliver the Hedgehog.
+* **Conflict**: Finding the path blocked by the Shadow Brambles.
+
+# Act III: The Festival Glow
+* **Climax**: Learning that true light comes from sharing kindness and courage.
+* **Resolution**: Barnaby's spark returns brighter than ever to light up the Starlight Parade.`,
+      coverImage: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=800&auto=format&fit=crop&q=80',
+      totalWordCount: 420,
+      targetWordCount: 2500,
       updatedAt: now,
       createdAt: now,
     };
 
-    const firstChapter: Chapter = {
+    const c1Content = `<p>Deep inside the hollow of the Great Oak Tree lived Barnaby, a tiny blue dragon no bigger than a teacup. Most dragons breathed fire, but Barnaby breathed gentle golden sparkles that lit up the forest at night.</p><p>Every year, Barnaby led the Starlight Festival parade through Whispering Woods. But when he woke up on the morning of the festival, his tail spark was completely gone!</p><blockquote><p>"Oh dear," squeaked Barnaby, wiggling his tail in front of the mirror. "How will the woodland animals find their way through the dark?"</p></blockquote>`;
+
+    const c2Content = `<p>Barnaby gathered his mini acorn backpack and trotted out into the misty morning. High in the branches above, Pip the Barn Owl swooped down with a flutter of soft white feathers.</p><p>"Hoo-hoo! Why the long face, Barnaby?" asked Pip, perching on a mossy branch.</p><p>"My spark is gone!" cried Barnaby. "Oliver Hedgehog says the Silver Pond moon-dew is the only thing that can restore a dragon's glow."</p>`;
+
+    const c3Content = `<p>Together, Barnaby, Pip, and Oliver reached the edge of the Silver Pond just as the evening moon rose above the trees. The water glittered like liquid starlight.</p><p>Barnaby dipped his tiny snout into the cool water and took a gentle sip. Suddenly, a warm tickle spread all the way down to his toes!</p>`;
+
+    const ch1: Chapter = {
       id: 'ch-1',
-      storyId: cleanStory.id,
+      storyId: demoStory.id,
       order: 1,
-      title: 'Chapter 1: The Inciting Incident',
-      overview: 'Introduce main characters and setting.',
-      content: '<p></p>',
-      wordCount: 0,
-      targetWordCount: 2500,
+      title: 'Chapter 1: The Lost Spark',
+      overview: 'Introduce Barnaby in his cozy oak tree hollow. Discover that his glow spark has gone out on festival day.',
+      chapterImage: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80',
+      content: c1Content,
+      wordCount: 140,
+      targetWordCount: 500,
       updatedAt: now,
     };
 
-    await db.stories.put(cleanStory);
-    await db.chapters.put(firstChapter);
+    const ch2: Chapter = {
+      id: 'ch-2',
+      storyId: demoStory.id,
+      order: 2,
+      title: 'Chapter 2: Into Whispering Woods',
+      overview: 'Barnaby sets out on his quest. Pip the Owl and Oliver Hedgehog join his journey.',
+      chapterImage: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=800&auto=format&fit=crop&q=80',
+      content: c2Content,
+      wordCount: 150,
+      targetWordCount: 500,
+      updatedAt: now,
+    };
 
-    return cleanStory;
+    const ch3: Chapter = {
+      id: 'ch-3',
+      storyId: demoStory.id,
+      order: 3,
+      title: 'Chapter 3: The Silver Pond',
+      overview: 'Reaching the magical Silver Pond and restoring Barnaby\'s starlight spark.',
+      chapterImage: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop&q=80',
+      content: c3Content,
+      wordCount: 130,
+      targetWordCount: 500,
+      updatedAt: now,
+    };
+
+    await db.stories.put(demoStory);
+    await db.chapters.bulkPut([ch1, ch2, ch3]);
+
+    return demoStory;
   }
 };

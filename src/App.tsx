@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useStory } from './hooks/useStory';
-import { useAuth } from './hooks/useAuth';
 import { useWordCount } from './hooks/useWordCount';
 import { HeaderBar } from './components/layout/HeaderBar';
 import { LeftSidebar } from './components/layout/LeftSidebar';
@@ -11,31 +10,13 @@ import { StoryDashboardModal } from './components/modals/StoryDashboardModal';
 import { SnapshotModal } from './components/modals/SnapshotModal';
 import { ExportModal } from './components/modals/ExportModal';
 import { FindReplaceModal } from './components/modals/FindReplaceModal';
-import { AuthModal } from './components/auth/AuthModal';
-import { LandingPage } from './components/auth/LandingPage';
-import { NewStorySetupScreen } from './components/modals/NewStorySetupScreen';
+import { DownloadAppModal } from './components/modals/DownloadAppModal';
 import { Loader2, CheckCircle2 } from 'lucide-react';
 import type { ThemeMode } from './types/manuscript';
 
 export function App() {
-  // Authentication state
   const {
-    user,
-    loading: authLoading,
-    isFirebaseConfigured,
-    loginWithEmail,
-    registerWithEmail,
-    logout,
-  } = useAuth();
-
-  // Guest / Direct Mode flag
-  const [isGuestMode, setIsGuestMode] = useState<boolean>(false);
-  // Flag indicating if author has completed kickoff wizard
-  const [hasEnteredCanvas, setHasEnteredCanvas] = useState<boolean>(false);
-
-  // Story & Manuscript state (synced with user ID)
-  const {
-    loading: storyLoading,
+    loading,
     stories,
     activeStory,
     chapters,
@@ -51,12 +32,11 @@ export function App() {
     reorderChapters,
     switchStory,
     createNewStory,
-    createStoryWithSetup,
     deleteStory,
     generateChaptersFromOverview,
     manualSaveAndSnapshot,
     restoreSnapshot,
-  } = useStory(user ? user.uid : null);
+  } = useStory();
 
   // Layout & Theme states (Default to Light Mode)
   const [theme, setTheme] = useState<ThemeMode>(() => {
@@ -73,7 +53,7 @@ export function App() {
   const [isSnapshotOpen, setIsSnapshotOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [isDownloadAppOpen, setIsDownloadAppOpen] = useState(false);
 
   // Synchronize HTML element theme class
   useEffect(() => {
@@ -123,50 +103,11 @@ export function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [focusMode, handleManualSave]);
 
-  if (authLoading) {
+  if (loading || !activeStory) {
     return (
       <div className="h-screen w-screen bg-zinc-50 dark:bg-zinc-950 flex flex-col items-center justify-center text-zinc-700 dark:text-zinc-300 gap-3">
         <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
         <span className="text-sm font-medium">Loading Enreda...</span>
-      </div>
-    );
-  }
-
-  // Show Primary Landing Page if not authenticated and hasn't chosen guest mode
-  if (!user && !isGuestMode) {
-    return (
-      <LandingPage
-        onEmailSignIn={loginWithEmail}
-        onEmailRegister={registerWithEmail}
-        onContinueAsGuest={() => setIsGuestMode(true)}
-        isFirebaseConfigured={isFirebaseConfigured}
-      />
-    );
-  }
-
-  // Show Story Kickoff Setup Screen before entering the main editor canvas
-  if (!hasEnteredCanvas) {
-    return (
-      <NewStorySetupScreen
-        existingStories={stories}
-        onStartNewStory={async (setupData) => {
-          await createStoryWithSetup(setupData);
-          setHasEnteredCanvas(true);
-        }}
-        onContinueStory={(storyId) => {
-          switchStory(storyId);
-          setHasEnteredCanvas(true);
-        }}
-        onOpenDashboard={() => setIsDashboardOpen(true)}
-      />
-    );
-  }
-
-  if (storyLoading || !activeStory) {
-    return (
-      <div className="h-screen w-screen bg-zinc-50 dark:bg-zinc-950 flex flex-col items-center justify-center text-zinc-700 dark:text-zinc-300 gap-3">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
-        <span className="text-sm font-medium">Preparing Manuscript Canvas...</span>
       </div>
     );
   }
@@ -183,15 +124,16 @@ export function App() {
           story={activeStory}
           syncState={syncState}
           theme={theme}
-          user={user}
-          onOpenAuth={() => setIsAuthOpen(true)}
           onToggleTheme={toggleTheme}
           onSyncNow={handleManualSave}
           onManualSave={handleManualSave}
+          rightInspectorOpen={rightInspectorOpen}
+          onToggleRightInspector={() => setRightInspectorOpen(!rightInspectorOpen)}
           onOpenDashboard={() => setIsDashboardOpen(true)}
           onOpenSearch={() => setIsSearchOpen(true)}
           onOpenSnapshot={() => setIsSnapshotOpen(true)}
           onOpenExport={() => setIsExportOpen(true)}
+          onOpenDownloadApp={() => setIsDownloadAppOpen(true)}
         />
       )}
 
@@ -297,16 +239,6 @@ export function App() {
       )}
 
       {/* Modals */}
-      <AuthModal
-        isOpen={isAuthOpen}
-        onClose={() => setIsAuthOpen(false)}
-        user={user}
-        isFirebaseConfigured={isFirebaseConfigured}
-        onEmailSignIn={loginWithEmail}
-        onEmailRegister={registerWithEmail}
-        onLogout={logout}
-      />
-
       <StoryDashboardModal
         isOpen={isDashboardOpen}
         onClose={() => setIsDashboardOpen(false)}
@@ -340,6 +272,11 @@ export function App() {
         onUpdateChapterContent={(chId, newHtml) => {
           updateChapter(chId, { content: newHtml });
         }}
+      />
+
+      <DownloadAppModal
+        isOpen={isDownloadAppOpen}
+        onClose={() => setIsDownloadAppOpen(false)}
       />
     </div>
   );
