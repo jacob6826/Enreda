@@ -23,12 +23,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
 
       - name: Install Dependencies
-        run: npm ci
+        run: npm install
 
       - name: Build Web Assets & Electron Binary
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
         run: |
           npm run build
           if [ "${{ matrix.os }}" = "macos-latest" ]; then
