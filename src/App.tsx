@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useStory } from './hooks/useStory';
 import { useWordCount } from './hooks/useWordCount';
+import { useAuth } from './hooks/useAuth';
 import { HeaderBar } from './components/layout/HeaderBar';
 import { LeftSidebar } from './components/layout/LeftSidebar';
 import { RightInspector } from './components/layout/RightInspector';
@@ -11,10 +12,13 @@ import { SnapshotModal } from './components/modals/SnapshotModal';
 import { ExportModal } from './components/modals/ExportModal';
 import { FindReplaceModal } from './components/modals/FindReplaceModal';
 import { DownloadAppModal } from './components/modals/DownloadAppModal';
+import { AuthModal } from './components/auth/AuthModal';
 import { Loader2, CheckCircle2 } from 'lucide-react';
 import type { ThemeMode } from './types/manuscript';
 
 export function App() {
+  const { user, isFirebaseConfigured, loginWithEmail, registerWithEmail, logout } = useAuth();
+
   const {
     loading,
     stories,
@@ -54,6 +58,7 @@ export function App() {
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isDownloadAppOpen, setIsDownloadAppOpen] = useState(false);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
 
   // Synchronize HTML element theme class
   useEffect(() => {
@@ -124,6 +129,7 @@ export function App() {
           story={activeStory}
           syncState={syncState}
           theme={theme}
+          user={user}
           onToggleTheme={toggleTheme}
           onSyncNow={handleManualSave}
           onManualSave={handleManualSave}
@@ -134,6 +140,7 @@ export function App() {
           onOpenSnapshot={() => setIsSnapshotOpen(true)}
           onOpenExport={() => setIsExportOpen(true)}
           onOpenDownloadApp={() => setIsDownloadAppOpen(true)}
+          onOpenAuth={() => setIsAuthOpen(true)}
         />
       )}
 
@@ -277,6 +284,16 @@ export function App() {
       <DownloadAppModal
         isOpen={isDownloadAppOpen}
         onClose={() => setIsDownloadAppOpen(false)}
+      />
+
+      <AuthModal
+        isOpen={isAuthOpen}
+        onClose={() => setIsAuthOpen(false)}
+        user={user}
+        isFirebaseConfigured={isFirebaseConfigured}
+        onEmailSignIn={loginWithEmail}
+        onEmailRegister={registerWithEmail}
+        onLogout={logout}
       />
     </div>
   );

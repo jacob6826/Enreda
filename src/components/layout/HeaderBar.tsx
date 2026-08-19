@@ -15,13 +15,16 @@ import {
   CloudOff,
   PanelRight,
   Laptop,
+  User as UserIcon,
 } from 'lucide-react';
 import type { Story, SyncState, ThemeMode } from '../../types/manuscript';
+import type { User } from 'firebase/auth';
 
 interface HeaderBarProps {
   story: Story | null;
   syncState: SyncState;
   theme: ThemeMode;
+  user?: User | null;
   onToggleTheme: () => void;
   onSyncNow: () => void;
   onManualSave: () => void;
@@ -32,12 +35,14 @@ interface HeaderBarProps {
   onOpenSnapshot: () => void;
   onOpenExport: () => void;
   onOpenDownloadApp?: () => void;
+  onOpenAuth?: () => void;
 }
 
 export const HeaderBar: React.FC<HeaderBarProps> = ({
   story,
   syncState,
   theme,
+  user,
   onToggleTheme,
   onSyncNow,
   onManualSave,
@@ -48,6 +53,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   onOpenSnapshot,
   onOpenExport,
   onOpenDownloadApp,
+  onOpenAuth,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -162,6 +168,26 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
               <div className="px-3 py-1.5 border-b border-zinc-100 dark:border-zinc-800/80 font-semibold text-[10px] text-zinc-400 uppercase tracking-wider">
                 Studio Actions
               </div>
+
+              {onOpenAuth && (
+                <button
+                  onClick={() => {
+                    onOpenAuth();
+                    setMenuOpen(false);
+                  }}
+                  className="w-full px-3.5 py-2 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center justify-between transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <UserIcon className="w-4 h-4 text-indigo-500" />
+                    <span>{user ? 'Account Settings' : 'Sign In / Account'}</span>
+                  </div>
+                  {user && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 font-semibold truncate max-w-[70px]">
+                      {user.email?.split('@')[0]}
+                    </span>
+                  )}
+                </button>
+              )}
 
               <button
                 onClick={() => {
