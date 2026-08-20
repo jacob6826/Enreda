@@ -12,6 +12,7 @@ import {
   RefreshCw,
   CloudOff,
   User as UserIcon,
+  Laptop,
 } from 'lucide-react';
 import type { User } from 'firebase/auth';
 import type { Story, SyncState, ThemeMode } from '../../types/manuscript';
@@ -29,6 +30,7 @@ interface HeaderBarProps {
   onOpenSearch: () => void;
   onOpenSnapshot: () => void;
   onOpenExport: () => void;
+  onOpenDownloadApp?: () => void;
 }
 
 export const HeaderBar: React.FC<HeaderBarProps> = ({
@@ -44,6 +46,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   onOpenSearch,
   onOpenSnapshot,
   onOpenExport,
+  onOpenDownloadApp,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -154,7 +157,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
 
           {/* Options Dropdown Panel */}
           {menuOpen && (
-            <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl py-1.5 text-xs text-zinc-700 dark:text-zinc-200 z-50 animate-fade-in">
+            <div className="absolute right-0 mt-2 w-60 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl py-1.5 text-xs text-zinc-700 dark:text-zinc-200 z-50 animate-fade-in">
               <div className="px-3 py-1.5 border-b border-zinc-100 dark:border-zinc-800/80 font-semibold text-[10px] text-zinc-400 uppercase tracking-wider">
                 Studio Actions
               </div>
@@ -200,6 +203,19 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
                 <Download className="w-4 h-4 text-indigo-500" />
                 <span>Export Manuscript (.md, .docx, .pdf)</span>
               </button>
+
+              {onOpenDownloadApp && (
+                <button
+                  onClick={() => {
+                    onOpenDownloadApp();
+                    setMenuOpen(false);
+                  }}
+                  className="w-full px-3.5 py-2 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center gap-2 transition-colors font-medium text-indigo-600 dark:text-indigo-400"
+                >
+                  <Laptop className="w-4 h-4 text-indigo-500" />
+                  <span>Download Desktop App (Win / Mac)</span>
+                </button>
+              )}
 
               <div className="my-1 border-t border-zinc-100 dark:border-zinc-800/80" />
 

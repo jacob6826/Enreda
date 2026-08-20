@@ -11,6 +11,7 @@ import { StoryDashboardModal } from './components/modals/StoryDashboardModal';
 import { SnapshotModal } from './components/modals/SnapshotModal';
 import { ExportModal } from './components/modals/ExportModal';
 import { FindReplaceModal } from './components/modals/FindReplaceModal';
+import { DownloadAppModal } from './components/modals/DownloadAppModal';
 import { AuthModal } from './components/auth/AuthModal';
 import { LandingPage } from './components/auth/LandingPage';
 import { CodexDrawer } from './components/codex/CodexDrawer';
@@ -68,6 +69,7 @@ export function App() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isCodexOpen, setIsCodexOpen] = useState(false);
+  const [isDownloadAppOpen, setIsDownloadAppOpen] = useState(false);
 
   // Synchronize HTML element theme class
   useEffect(() => {
@@ -171,6 +173,7 @@ export function App() {
           onOpenSearch={() => setIsSearchOpen(true)}
           onOpenSnapshot={() => setIsSnapshotOpen(true)}
           onOpenExport={() => setIsExportOpen(true)}
+          onOpenDownloadApp={() => setIsDownloadAppOpen(true)}
         />
       )}
 
@@ -324,6 +327,11 @@ export function App() {
         onClose={() => setIsExportOpen(false)}
         story={activeStory}
         chapters={chapters}
+      />
+
+      <DownloadAppModal
+        isOpen={isDownloadAppOpen}
+        onClose={() => setIsDownloadAppOpen(false)}
       />
 
       <FindReplaceModal
