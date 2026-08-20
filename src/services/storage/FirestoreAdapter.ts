@@ -182,10 +182,15 @@ export function createFirestoreAdapter(userId: string | null): StorageAdapter {
 
     async getCodex(storyId: string): Promise<CodexEntry[]> {
       try {
-        console.log(`[FirestoreSync] Fetching all Codex entries for user: ${userId}`);
+        console.log(`[FirestoreSync] Fetching Codex entries for storyId: ${storyId}`);
         const snap = await getDocs(codexCol);
         const entries: CodexEntry[] = [];
-        snap.forEach((d) => entries.push(d.data() as CodexEntry));
+        snap.forEach((d) => {
+          const data = d.data() as CodexEntry;
+          if (data.storyId === storyId) {
+            entries.push(data);
+          }
+        });
         entries.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
 
         const localEntries = await indexedDBAdapter.getCodex(storyId);
@@ -207,11 +212,11 @@ export function createFirestoreAdapter(userId: string | null): StorageAdapter {
           await indexedDBAdapter.saveCodexEntry(entry);
         }
 
-        // Merge any local entries that haven't hit Firestore yet
+        // Merge any local entries for this story that haven't hit Firestore yet
         const entryMap = new Map<string, CodexEntry>();
         entries.forEach((e) => entryMap.set(e.id, e));
         for (const local of localEntries) {
-          if (!entryMap.has(local.id)) {
+          if (local.storyId === storyId && !entryMap.has(local.id)) {
             entryMap.set(local.id, local);
             setDoc(doc(codexCol, local.id), local, { merge: true }).catch(console.warn);
           }
