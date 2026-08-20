@@ -13,6 +13,11 @@ dist-ssr
 release
 *.local
 
+# Environment variables (Secrets & Local Config)
+.env
+.env.local
+.env.*.local
+
 # Binary installers (Uploaded via GitHub Releases, ignored in git repo to prevent 100MB limit errors)
 public/downloads/
 *.exe
