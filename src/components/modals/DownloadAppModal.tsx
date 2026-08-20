@@ -11,8 +11,8 @@ interface DownloadAppModalProps {
 export const DownloadAppModal: React.FC<DownloadAppModalProps> = ({
   isOpen,
   onClose,
-  macDownloadUrl = '/downloads/Enreda.dmg',
-  winDownloadUrl = '/downloads/Enreda.exe',
+  macDownloadUrl = 'https://github.com/jacob6826/Enreda/releases/latest/download/Enreda.dmg',
+  winDownloadUrl = 'https://github.com/jacob6826/Enreda/releases/latest/download/Enreda.exe',
 }) => {
   if (!isOpen) return null;
 
@@ -58,7 +58,8 @@ export const DownloadAppModal: React.FC<DownloadAppModalProps> = ({
             {/* macOS Option */}
             <a
               href={macDownloadUrl}
-              download="Enreda.dmg"
+              target="_blank"
+              rel="noopener noreferrer"
               className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
                 isMac
                   ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/30 text-indigo-900 dark:text-indigo-100 shadow-sm'
@@ -87,7 +88,8 @@ export const DownloadAppModal: React.FC<DownloadAppModalProps> = ({
             {/* Windows Option */}
             <a
               href={winDownloadUrl}
-              download="Enreda.exe"
+              target="_blank"
+              rel="noopener noreferrer"
               className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
                 !isMac
                   ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/30 text-indigo-900 dark:text-indigo-100 shadow-sm'
@@ -117,9 +119,15 @@ export const DownloadAppModal: React.FC<DownloadAppModalProps> = ({
 
         {/* Footer */}
         <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800/80 flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
-          <span className="text-[11px] text-zinc-400">
-            Direct high-speed download hosted on Netlify
-          </span>
+          <a
+            href="https://github.com/jacob6826/Enreda/releases"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center gap-1 transition-colors"
+          >
+            <span>All releases</span>
+            <ExternalLink className="w-3 h-3" />
+          </a>
           <button
             onClick={onClose}
             className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-medium rounded-lg transition-colors"
