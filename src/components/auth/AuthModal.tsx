@@ -77,14 +77,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         {user ? (
           <div className="space-y-4">
             <div className="p-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center text-sm">
+              <div className="w-10 h-10 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center text-sm shrink-0">
                 {(user.email || 'U')[0].toUpperCase()}
               </div>
               <div className="flex-1 overflow-hidden">
                 <div className="font-semibold text-sm text-zinc-900 dark:text-white truncate">
-                  Author
+                  Author Profile
                 </div>
                 <div className="text-xs text-zinc-500 truncate">{user.email}</div>
+                <div className="text-[10px] text-zinc-400 font-mono mt-1 truncate">
+                  UID: {user.uid}
+                </div>
               </div>
             </div>
 
