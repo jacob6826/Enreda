@@ -7,7 +7,6 @@ import {
   deleteDoc,
   query,
   where,
-  orderBy,
   writeBatch,
 } from 'firebase/firestore';
 import { db } from '../firebase/firebaseConfig';
@@ -31,17 +30,17 @@ export function createFirestoreAdapter(userId: string | null): StorageAdapter {
     async getStories(): Promise<Story[]> {
       try {
         console.log(`[FirestoreSync] Fetching stories for user: ${userId}`);
-        const q = query(storiesCol, orderBy('updatedAt', 'desc'));
-        const snap = await getDocs(q);
+        const snap = await getDocs(storiesCol);
         const firestoreStories: Story[] = [];
         snap.forEach((d) => {
           const data = d.data() as Story;
           firestoreStories.push({ ...data, targetWordCount: data.targetWordCount || 50000 });
         });
 
+        const localStories = await indexedDBAdapter.getStories();
+
         // Seed or pull local fallback if Firestore returns empty
         if (firestoreStories.length === 0) {
-          const localStories = await indexedDBAdapter.getStories();
           if (localStories.length > 0) {
             console.log('[FirestoreSync] Uploading local IndexedDB stories to Firestore...');
             for (const story of localStories) {
@@ -64,7 +63,18 @@ export function createFirestoreAdapter(userId: string | null): StorageAdapter {
           await indexedDBAdapter.saveStory(story);
         }
 
-        return firestoreStories;
+        // MERGE local stories that may not have finished uploading to Firestore yet
+        const storyMap = new Map<string, Story>();
+        firestoreStories.forEach((s) => storyMap.set(s.id, s));
+        for (const local of localStories) {
+          if (!storyMap.has(local.id)) {
+            storyMap.set(local.id, local);
+            setDoc(doc(storiesCol, local.id), local, { merge: true }).catch(console.warn);
+          }
+        }
+
+        const mergedStories = Array.from(storyMap.values()).sort((a, b) => b.updatedAt - a.updatedAt);
+        return mergedStories;
       } catch (err) {
         console.warn('Firestore getStories failed, using IndexedDB fallback:', err);
         return await indexedDBAdapter.getStories();
@@ -116,8 +126,10 @@ export function createFirestoreAdapter(userId: string | null): StorageAdapter {
         const chapters: Chapter[] = [];
         snap.forEach((d) => chapters.push(d.data() as Chapter));
         chapters.sort((a, b) => a.order - b.order);
+
+        const localChs = await indexedDBAdapter.getChapters(storyId);
+
         if (chapters.length === 0) {
-          const localChs = await indexedDBAdapter.getChapters(storyId);
           if (localChs.length > 0) {
             const batch = writeBatch(db);
             localChs.forEach((ch) => batch.set(doc(chaptersCol, ch.id), ch, { merge: true }));
@@ -131,7 +143,17 @@ export function createFirestoreAdapter(userId: string | null): StorageAdapter {
           await indexedDBAdapter.saveChapter(ch);
         }
 
-        return chapters;
+        // Merge local chapters for this story that haven't hit Firestore yet
+        const chMap = new Map<string, Chapter>();
+        chapters.forEach((c) => chMap.set(c.id, c));
+        for (const local of localChs) {
+          if (!chMap.has(local.id)) {
+            chMap.set(local.id, local);
+            setDoc(doc(chaptersCol, local.id), local, { merge: true }).catch(console.warn);
+          }
+        }
+
+        return Array.from(chMap.values()).sort((a, b) => a.order - b.order);
       } catch {
         return await indexedDBAdapter.getChapters(storyId);
       }
