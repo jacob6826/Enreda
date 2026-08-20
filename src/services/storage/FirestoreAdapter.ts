@@ -50,39 +50,45 @@ export function createFirestoreAdapter(userId: string | null): StorageAdapter {
               for (const ch of localChs) {
                 await setDoc(doc(chaptersCol, ch.id), ch, { merge: true });
               }
+              const localCodex = await indexedDBAdapter.getCodex(story.id);
+              for (const entry of localCodex) {
+                await setDoc(doc(codexCol, entry.id), entry, { merge: true });
+              }
             }
             return localStories;
           }
-          return firestoreStories;
+        }
+
+        // Cache Firestore stories into local IndexedDB
+        for (const story of firestoreStories) {
+          await indexedDBAdapter.saveStory(story);
         }
 
         return firestoreStories;
       } catch (err) {
-        console.warn('Firestore getStories failed, using local IndexedDB:', err);
+        console.warn('Firestore getStories failed, using IndexedDB fallback:', err);
         return await indexedDBAdapter.getStories();
       }
     },
 
     async getStory(storyId: string): Promise<Story | undefined> {
       try {
-        const docRef = doc(storiesCol, storyId);
-        const snap = await getDoc(docRef);
+        const snap = await getDoc(doc(storiesCol, storyId));
         if (!snap.exists()) return await indexedDBAdapter.getStory(storyId);
-        const data = snap.data() as Story;
-        return { ...data, targetWordCount: data.targetWordCount || 50000 };
+        const story = snap.data() as Story;
+        await indexedDBAdapter.saveStory(story);
+        return story;
       } catch {
         return await indexedDBAdapter.getStory(storyId);
       }
     },
 
     async saveStory(story: Story): Promise<void> {
-      // Save locally first for instant offline access
       await indexedDBAdapter.saveStory(story);
       try {
-        const docRef = doc(storiesCol, story.id);
-        await setDoc(docRef, story, { merge: true });
+        await setDoc(doc(storiesCol, story.id), story, { merge: true });
       } catch (err) {
-        console.warn('Firestore story save failed, changes cached locally:', err);
+        console.warn('Firestore story save failed:', err);
       }
     },
 
@@ -90,13 +96,12 @@ export function createFirestoreAdapter(userId: string | null): StorageAdapter {
       await indexedDBAdapter.deleteStory(storyId);
       try {
         await deleteDoc(doc(storiesCol, storyId));
-        // Delete chapters in Firestore
-        const chSnap = await getDocs(query(chaptersCol, where('storyId', '==', storyId)));
+        const chapters = await this.getChapters(storyId);
         const batch = writeBatch(db);
-        chSnap.forEach((d) => batch.delete(d.ref));
+        chapters.forEach((ch) => batch.delete(doc(chaptersCol, ch.id)));
 
-        const codexSnap = await getDocs(query(codexCol, where('storyId', '==', storyId)));
-        codexSnap.forEach((d) => batch.delete(d.ref));
+        const codexEntries = await this.getCodex(storyId);
+        codexEntries.forEach((entry) => batch.delete(doc(codexCol, entry.id)));
 
         await batch.commit();
       } catch (err) {
@@ -120,6 +125,12 @@ export function createFirestoreAdapter(userId: string | null): StorageAdapter {
           }
           return localChs;
         }
+
+        // Cache chapters into IndexedDB
+        for (const ch of chapters) {
+          await indexedDBAdapter.saveChapter(ch);
+        }
+
         return chapters;
       } catch {
         return await indexedDBAdapter.getChapters(storyId);
@@ -130,7 +141,9 @@ export function createFirestoreAdapter(userId: string | null): StorageAdapter {
       try {
         const snap = await getDoc(doc(chaptersCol, chapterId));
         if (!snap.exists()) return await indexedDBAdapter.getChapter(chapterId);
-        return snap.data() as Chapter;
+        const ch = snap.data() as Chapter;
+        await indexedDBAdapter.saveChapter(ch);
+        return ch;
       } catch {
         return await indexedDBAdapter.getChapter(chapterId);
       }
@@ -175,8 +188,20 @@ export function createFirestoreAdapter(userId: string | null): StorageAdapter {
         snap.forEach((d) => entries.push(d.data() as CodexEntry));
         entries.sort((a, b) => b.updatedAt - a.updatedAt);
         if (entries.length === 0) {
-          return await indexedDBAdapter.getCodex(storyId);
+          const localEntries = await indexedDBAdapter.getCodex(storyId);
+          if (localEntries.length > 0) {
+            const batch = writeBatch(db);
+            localEntries.forEach((entry) => batch.set(doc(codexCol, entry.id), entry, { merge: true }));
+            await batch.commit();
+          }
+          return localEntries;
         }
+
+        // Cache cloud entries down to local IndexedDB for offline support
+        for (const entry of entries) {
+          await indexedDBAdapter.saveCodexEntry(entry);
+        }
+
         return entries;
       } catch {
         return await indexedDBAdapter.getCodex(storyId);
