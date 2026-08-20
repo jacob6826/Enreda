@@ -182,16 +182,21 @@ export function createFirestoreAdapter(userId: string | null): StorageAdapter {
 
     async getCodex(storyId: string): Promise<CodexEntry[]> {
       try {
-        const q = query(codexCol, where('storyId', '==', storyId));
-        const snap = await getDocs(q);
+        console.log(`[FirestoreSync] Fetching all Codex entries for user: ${userId}`);
+        const snap = await getDocs(codexCol);
         const entries: CodexEntry[] = [];
         snap.forEach((d) => entries.push(d.data() as CodexEntry));
-        entries.sort((a, b) => b.updatedAt - a.updatedAt);
+        entries.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+
+        const localEntries = await indexedDBAdapter.getCodex(storyId);
+
         if (entries.length === 0) {
-          const localEntries = await indexedDBAdapter.getCodex(storyId);
           if (localEntries.length > 0) {
+            console.log('[FirestoreSync] Uploading local Codex entries to Firestore...');
             const batch = writeBatch(db);
-            localEntries.forEach((entry) => batch.set(doc(codexCol, entry.id), entry, { merge: true }));
+            localEntries.forEach((entry) => {
+              batch.set(doc(codexCol, entry.id), entry, { merge: true });
+            });
             await batch.commit();
           }
           return localEntries;
@@ -202,8 +207,19 @@ export function createFirestoreAdapter(userId: string | null): StorageAdapter {
           await indexedDBAdapter.saveCodexEntry(entry);
         }
 
-        return entries;
-      } catch {
+        // Merge any local entries that haven't hit Firestore yet
+        const entryMap = new Map<string, CodexEntry>();
+        entries.forEach((e) => entryMap.set(e.id, e));
+        for (const local of localEntries) {
+          if (!entryMap.has(local.id)) {
+            entryMap.set(local.id, local);
+            setDoc(doc(codexCol, local.id), local, { merge: true }).catch(console.warn);
+          }
+        }
+
+        return Array.from(entryMap.values()).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+      } catch (err) {
+        console.warn('Firestore getCodex failed, using IndexedDB fallback:', err);
         return await indexedDBAdapter.getCodex(storyId);
       }
     },

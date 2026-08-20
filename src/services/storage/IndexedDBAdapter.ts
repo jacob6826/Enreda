@@ -117,10 +117,9 @@ export const indexedDBAdapter: StorageAdapter = {
     }
   },
 
-  async getCodex(storyId: string): Promise<CodexEntry[]> {
+  async getCodex(_storyId: string): Promise<CodexEntry[]> {
     const all = await db.codex.toArray();
-    const filtered = all.filter((e) => !e.storyId || e.storyId === storyId);
-    return filtered.sort((a, b) => b.updatedAt - a.updatedAt);
+    return all.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
   },
 
   async saveCodexEntry(entry: CodexEntry): Promise<void> {
