@@ -74,10 +74,17 @@
     },
     "win": {
       "target": [
+        "nsis",
         "portable"
       ],
       "artifactName": "Enreda.${ext}",
       "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
     }
   }
 }
