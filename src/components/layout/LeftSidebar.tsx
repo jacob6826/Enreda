@@ -107,7 +107,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   const totalPercent = Math.min(100, Math.round((currentTotal / targetGoal) * 100));
 
   return (
-    <aside className="w-64 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800/80 flex flex-col h-full select-none shrink-0 z-20">
+    <aside className="w-64 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800/80 flex flex-col h-full shrink-0 z-20">
       {/* Story Premise & Meta Section */}
       <div className="p-3.5 border-b border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/70 dark:bg-zinc-900/40">
         {/* Header Bar */}

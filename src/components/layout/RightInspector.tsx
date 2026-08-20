@@ -155,7 +155,7 @@ export const RightInspector: React.FC<RightInspectorProps> = ({
   };
 
   return (
-    <aside className="w-80 bg-white dark:bg-zinc-900 border-l border-zinc-200 dark:border-zinc-800/80 flex flex-col h-full select-none shrink-0 z-20">
+    <aside className="w-80 bg-white dark:bg-zinc-900 border-l border-zinc-200 dark:border-zinc-800/80 flex flex-col h-full shrink-0 z-20">
       {/* Header with Dual-Tab Switcher */}
       <div className="px-3 py-2.5 border-b border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/70 dark:bg-zinc-900/40 flex items-center justify-between">
         <div className="flex items-center gap-1 bg-zinc-200/70 dark:bg-zinc-800/80 p-0.5 rounded-lg text-xs">

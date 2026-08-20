@@ -60,7 +60,7 @@ export const NewStorySetupScreen: React.FC<NewStorySetupScreenProps> = ({
   };
 
   return (
-    <div className="min-h-screen w-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 flex flex-col items-center justify-center p-6 font-sans select-none">
+    <div className="min-h-screen w-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 flex flex-col items-center justify-center p-6 font-sans">
       {/* Container Box */}
       <div className="max-w-2xl w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-8 shadow-2xl space-y-6 relative overflow-hidden">
         {/* Top Header */}
