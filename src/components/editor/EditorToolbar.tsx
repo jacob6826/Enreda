@@ -15,12 +15,15 @@ import {
   Minimize2,
   PanelLeft,
   PanelRight,
+  CheckCheck,
 } from 'lucide-react';
 
 interface EditorToolbarProps {
   editor: Editor | null;
   focusMode: boolean;
   onToggleFocusMode: () => void;
+  spellcheckEnabled: boolean;
+  onToggleSpellcheck: () => void;
   leftSidebarOpen?: boolean;
   onToggleLeftSidebar?: () => void;
   rightInspectorOpen?: boolean;
@@ -31,6 +34,8 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   editor,
   focusMode,
   onToggleFocusMode,
+  spellcheckEnabled,
+  onToggleSpellcheck,
   leftSidebarOpen,
   onToggleLeftSidebar,
   rightInspectorOpen,
@@ -144,6 +149,22 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
           title="Clear Formatting"
         >
           <RemoveFormatting className="w-3.5 h-3.5" />
+        </button>
+
+        <div className="w-px h-3.5 bg-zinc-300 dark:bg-zinc-800 mx-1" />
+
+        {/* Spell Check Toggle */}
+        <button
+          onClick={onToggleSpellcheck}
+          className={`p-1.5 rounded-md transition-colors flex items-center gap-1 text-xs font-semibold ${
+            spellcheckEnabled
+              ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800'
+              : 'text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'
+          }`}
+          title={spellcheckEnabled ? 'Spellcheck Enabled (Click to disable)' : 'Spellcheck Disabled (Click to enable)'}
+        >
+          <CheckCheck className="w-3.5 h-3.5" />
+          <span className="hidden md:inline">Spellcheck</span>
         </button>
       </div>
 

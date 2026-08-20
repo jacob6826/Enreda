@@ -242,11 +242,14 @@ export function App() {
           </footer>
         </main>
 
-        {/* Right Inspector Drawer (Story & Chapter Overview Side-by-Side) */}
+        {/* Right Inspector Drawer (Dual-Tab Overview & Codex Switcher) */}
         <div className={`${mobileTab === 'overview' ? 'flex w-full' : 'hidden md:flex'}`}>
           <RightInspector
             story={activeStory}
             activeChapter={activeChapter}
+            codexEntries={codexEntries}
+            onSaveCodexEntry={saveCodexEntry}
+            onDeleteCodexEntry={deleteCodexEntry}
             onUpdateStoryOverview={(newOverview) => {
               updateStoryMeta({ storyOverview: newOverview });
             }}
@@ -259,7 +262,6 @@ export function App() {
             onUpdateChapterMeta={(chapterId, updates) => {
               updateChapter(chapterId, updates);
             }}
-            onOpenCodex={() => setIsCodexOpen(true)}
             isOpen={isRightOpen || mobileTab === 'overview'}
             onClose={() => setRightInspectorOpen(false)}
           />
