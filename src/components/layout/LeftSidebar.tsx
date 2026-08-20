@@ -12,6 +12,7 @@ import {
   Target,
   Image as ImageIcon,
   X,
+  Feather,
 } from 'lucide-react';
 import type { Chapter, Story } from '../../types/manuscript';
 
@@ -74,33 +75,25 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
 
   return (
     <aside className="w-64 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800/80 flex flex-col h-full select-none shrink-0 z-20">
-      {/* Story Pitch & Cover Image Header */}
+      {/* Story Premise & Meta Section */}
       <div className="p-3.5 border-b border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/70 dark:bg-zinc-900/40">
-        <div className="flex items-center justify-between mb-1.5">
+        {/* Header Bar */}
+        <div className="flex items-center justify-between mb-2">
           <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 flex items-center gap-1">
             <BookOpen className="w-3 h-3 text-indigo-500" /> Story Premise
           </span>
-          <div className="flex items-center gap-1">
+          {onClose && (
             <button
-              onClick={() => setShowIdeaDetails(!showIdeaDetails)}
-              className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors p-0.5"
-              title="Toggle Story Details"
+              onClick={onClose}
+              className="p-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-white rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors"
+              title="Close Left Sidebar"
             >
-              {showIdeaDetails ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+              <X className="w-3.5 h-3.5" />
             </button>
-            {onClose && (
-              <button
-                onClick={onClose}
-                className="p-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-white rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors"
-                title="Close Left Sidebar"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
+          )}
         </div>
 
-        {/* Cover Image Thumbnail / Uploader */}
+        {/* Cover Image Thumbnail / Title Uploader */}
         <div className="mb-2 flex items-center gap-2.5">
           <div className="relative group w-12 h-16 rounded border border-zinc-200 dark:border-zinc-700/80 overflow-hidden bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shrink-0">
             {story.coverImage ? (
@@ -160,6 +153,44 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
           </div>
         )}
 
+        {/* Dedicated Logline / Pitch Collapsible Bar */}
+        <div className="mt-2">
+          <button
+            type="button"
+            onClick={() => setShowIdeaDetails(!showIdeaDetails)}
+            className="w-full flex items-center justify-between py-1.5 px-2.5 bg-zinc-100 dark:bg-zinc-800/60 hover:bg-zinc-200/70 dark:hover:bg-zinc-800 rounded-lg text-xs font-medium text-zinc-700 dark:text-zinc-300 transition-colors"
+            title="Expand or collapse logline pitch"
+          >
+            <div className="flex items-center gap-1.5 overflow-hidden pr-1">
+              <Feather className="w-3 h-3 text-indigo-500 shrink-0" />
+              <span className="text-[11px] font-semibold shrink-0">Logline / Pitch</span>
+              {!showIdeaDetails && story.storyIdea && (
+                <span className="text-[10px] text-zinc-400 truncate italic">
+                  — "{story.storyIdea}"
+                </span>
+              )}
+            </div>
+            {showIdeaDetails ? (
+              <ChevronDown className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+            ) : (
+              <ChevronRight className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+            )}
+          </button>
+
+          {/* Logline Textarea */}
+          {showIdeaDetails && (
+            <div className="mt-2 space-y-1.5 animate-fade-in">
+              <textarea
+                value={story.storyIdea}
+                onChange={(e) => onUpdateStoryMeta({ storyIdea: e.target.value })}
+                placeholder="What is the core logline / premise of your story?"
+                rows={3}
+                className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg p-2 text-xs text-zinc-900 dark:text-zinc-200 focus:outline-none focus:border-indigo-500 resize-none shadow-2xs"
+              />
+            </div>
+          )}
+        </div>
+
         {/* Target Word Count Goal Bar */}
         <div className="mt-2.5 pt-2 border-t border-zinc-200 dark:border-zinc-800/60">
           <div className="flex items-center justify-between text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">
@@ -184,21 +215,6 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
             />
           </div>
         </div>
-
-        {showIdeaDetails && (
-          <div className="mt-3 space-y-1.5">
-            <label className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 block">
-              Logline / Pitch:
-            </label>
-            <textarea
-              value={story.storyIdea}
-              onChange={(e) => onUpdateStoryMeta({ storyIdea: e.target.value })}
-              placeholder="What is the core premise of your story?"
-              rows={3}
-              className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-md p-2 text-xs text-zinc-900 dark:text-zinc-200 focus:outline-none focus:border-indigo-500 resize-none"
-            />
-          </div>
-        )}
       </div>
 
       {/* Chapters Header Bar */}
