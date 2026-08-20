@@ -10,6 +10,8 @@ export interface Story {
   createdAt: number;
 }
 
+export type ChapterStatus = 'outline' | 'drafting' | 'revising' | 'final';
+
 export interface Chapter {
   id: string;
   storyId: string;
@@ -20,6 +22,23 @@ export interface Chapter {
   chapterImage?: string; // Data URL or Image URL for chapter illustration (children books)
   wordCount: number;
   targetWordCount?: number; // e.g. 2,500 words chapter goal
+  status?: ChapterStatus; // 'outline' | 'drafting' | 'revising' | 'final'
+  pov?: string; // e.g. "Elena", "Marcus", "3rd Person"
+  tags?: string[]; // e.g. ["Action", "Climax", "Subplot B"]
+  updatedAt: number;
+}
+
+export type CodexCategory = 'character' | 'location' | 'item' | 'faction' | 'lore';
+
+export interface CodexEntry {
+  id: string;
+  storyId: string;
+  name: string;
+  category: CodexCategory;
+  role?: string; // e.g. Protagonist, Antagonist, Supporting, Capital City
+  avatar?: string; // Image URL or Data URL
+  summary: string; // One-line summary
+  details: string; // Rich notes, motivation, flaws, backstory
   updatedAt: number;
 }
 

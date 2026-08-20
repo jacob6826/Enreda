@@ -11,9 +11,9 @@ import { StoryDashboardModal } from './components/modals/StoryDashboardModal';
 import { SnapshotModal } from './components/modals/SnapshotModal';
 import { ExportModal } from './components/modals/ExportModal';
 import { FindReplaceModal } from './components/modals/FindReplaceModal';
-import { DownloadAppModal } from './components/modals/DownloadAppModal';
 import { AuthModal } from './components/auth/AuthModal';
 import { LandingPage } from './components/auth/LandingPage';
+import { CodexDrawer } from './components/codex/CodexDrawer';
 import { Loader2, CheckCircle2 } from 'lucide-react';
 import type { ThemeMode } from './types/manuscript';
 
@@ -28,6 +28,9 @@ export function App() {
     activeChapter,
     activeChapterId,
     setActiveChapterId,
+    codexEntries,
+    saveCodexEntry,
+    deleteCodexEntry,
     syncState,
     snapshots,
     updateStoryMeta,
@@ -58,13 +61,13 @@ export function App() {
   const [mobileTab, setMobileTab] = useState<MobileTab>('editor');
   const [saveToast, setSaveToast] = useState(false);
 
-  // Modal states
+  // Modal & Drawer states
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
   const [isSnapshotOpen, setIsSnapshotOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [isDownloadAppOpen, setIsDownloadAppOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [isCodexOpen, setIsCodexOpen] = useState(false);
 
   // Synchronize HTML element theme class
   useEffect(() => {
@@ -114,16 +117,16 @@ export function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [focusMode, handleManualSave]);
 
-  if (loading || authLoading || !activeStory) {
+  if (authLoading) {
     return (
       <div className="h-screen w-screen bg-zinc-50 dark:bg-zinc-950 flex flex-col items-center justify-center text-zinc-700 dark:text-zinc-300 gap-3">
         <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
-        <span className="text-sm font-medium">Loading Enreda...</span>
+        <span className="text-sm font-medium">Authenticating Enreda...</span>
       </div>
     );
   }
 
-  // Render Landing Page for first-time visitors / unauthenticated users
+  // Show Landing Page if unauthenticated and hasn't clicked guest mode
   if (!user && !hasContinuedAsGuest) {
     return (
       <LandingPage
@@ -135,6 +138,15 @@ export function App() {
         }}
         isFirebaseConfigured={isFirebaseConfigured}
       />
+    );
+  }
+
+  if (loading || !activeStory) {
+    return (
+      <div className="h-screen w-screen bg-zinc-50 dark:bg-zinc-950 flex flex-col items-center justify-center text-zinc-700 dark:text-zinc-300 gap-3">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+        <span className="text-sm font-medium">Loading Enreda Studio...</span>
+      </div>
     );
   }
 
@@ -151,17 +163,15 @@ export function App() {
           syncState={syncState}
           theme={theme}
           user={user}
+          onOpenAuth={() => setIsAuthOpen(true)}
           onToggleTheme={toggleTheme}
           onSyncNow={handleManualSave}
           onManualSave={handleManualSave}
-          rightInspectorOpen={rightInspectorOpen}
-          onToggleRightInspector={() => setRightInspectorOpen(!rightInspectorOpen)}
           onOpenDashboard={() => setIsDashboardOpen(true)}
           onOpenSearch={() => setIsSearchOpen(true)}
           onOpenSnapshot={() => setIsSnapshotOpen(true)}
           onOpenExport={() => setIsExportOpen(true)}
-          onOpenDownloadApp={() => setIsDownloadAppOpen(true)}
-          onOpenAuth={() => setIsAuthOpen(true)}
+          onOpenCodex={() => setIsCodexOpen(true)}
         />
       )}
 
@@ -182,6 +192,7 @@ export function App() {
             onReorderChapters={reorderChapters}
             onUpdateStoryMeta={updateStoryMeta}
             onGenerateChapters={generateChaptersFromOverview}
+            onOpenCodex={() => setIsCodexOpen(true)}
             isOpen={isLeftOpen || mobileTab === 'chapters'}
             onClose={() => setLeftSidebarOpen(false)}
           />
@@ -246,6 +257,10 @@ export function App() {
             onUpdateChapterGoal={(chapterId, targetWords) => {
               updateChapter(chapterId, { targetWordCount: targetWords });
             }}
+            onUpdateChapterMeta={(chapterId, updates) => {
+              updateChapter(chapterId, updates);
+            }}
+            onOpenCodex={() => setIsCodexOpen(true)}
             isOpen={isRightOpen || mobileTab === 'overview'}
             onClose={() => setRightInspectorOpen(false)}
           />
@@ -266,7 +281,25 @@ export function App() {
         </div>
       )}
 
-      {/* Modals */}
+      {/* Modals & Drawers */}
+      <CodexDrawer
+        isOpen={isCodexOpen}
+        onClose={() => setIsCodexOpen(false)}
+        entries={codexEntries}
+        onSaveEntry={saveCodexEntry}
+        onDeleteEntry={deleteCodexEntry}
+      />
+
+      <AuthModal
+        isOpen={isAuthOpen}
+        onClose={() => setIsAuthOpen(false)}
+        user={user}
+        isFirebaseConfigured={isFirebaseConfigured}
+        onEmailSignIn={loginWithEmail}
+        onEmailRegister={registerWithEmail}
+        onLogout={logout}
+      />
+
       <StoryDashboardModal
         isOpen={isDashboardOpen}
         onClose={() => setIsDashboardOpen(false)}
@@ -300,21 +333,6 @@ export function App() {
         onUpdateChapterContent={(chId, newHtml) => {
           updateChapter(chId, { content: newHtml });
         }}
-      />
-
-      <DownloadAppModal
-        isOpen={isDownloadAppOpen}
-        onClose={() => setIsDownloadAppOpen(false)}
-      />
-
-      <AuthModal
-        isOpen={isAuthOpen}
-        onClose={() => setIsAuthOpen(false)}
-        user={user}
-        isFirebaseConfigured={isFirebaseConfigured}
-        onEmailSignIn={loginWithEmail}
-        onEmailRegister={registerWithEmail}
-        onLogout={logout}
       />
     </div>
   );

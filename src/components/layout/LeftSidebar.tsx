@@ -13,8 +13,10 @@ import {
   Image as ImageIcon,
   X,
   Feather,
+  UserCheck,
+  Tag,
 } from 'lucide-react';
-import type { Chapter, Story } from '../../types/manuscript';
+import type { Chapter, Story, ChapterStatus } from '../../types/manuscript';
 
 interface LeftSidebarProps {
   story: Story | null;
@@ -26,6 +28,7 @@ interface LeftSidebarProps {
   onReorderChapters: (reordered: Chapter[]) => void;
   onUpdateStoryMeta: (updates: Partial<Story>) => void;
   onGenerateChapters: () => void;
+  onOpenCodex?: () => void;
   isOpen: boolean;
   onClose?: () => void;
 }
@@ -40,6 +43,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   onReorderChapters,
   onUpdateStoryMeta,
   onGenerateChapters,
+  onOpenCodex,
   isOpen,
   onClose,
 }) => {
@@ -66,6 +70,36 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
         }
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const getStatusBadge = (status?: ChapterStatus) => {
+    switch (status) {
+      case 'outline':
+        return (
+          <span className="px-1.5 py-0.2 text-[9px] font-semibold rounded bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60">
+            Outline
+          </span>
+        );
+      case 'revising':
+        return (
+          <span className="px-1.5 py-0.2 text-[9px] font-semibold rounded bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800/60">
+            Revising
+          </span>
+        );
+      case 'final':
+        return (
+          <span className="px-1.5 py-0.2 text-[9px] font-semibold rounded bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60">
+            Final
+          </span>
+        );
+      case 'drafting':
+      default:
+        return (
+          <span className="px-1.5 py-0.2 text-[9px] font-semibold rounded bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60">
+            Drafting
+          </span>
+        );
     }
   };
 
@@ -268,14 +302,14 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                           ref={provided.innerRef}
                           {...provided.draggableProps}
                           onClick={() => onSelectChapter(chapter.id)}
-                          className={`group flex flex-col gap-1 p-2 rounded-md text-xs transition-all cursor-pointer ${
+                          className={`group flex flex-col gap-1.5 p-2 rounded-lg text-xs transition-all cursor-pointer ${
                             isActive
                               ? 'bg-indigo-50 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 font-semibold border border-indigo-200 dark:border-indigo-500/30 shadow-sm'
                               : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 hover:text-zinc-900 dark:hover:text-zinc-100'
                           } ${snapshot.isDragging ? 'bg-zinc-800 shadow-md ring-1 ring-indigo-500' : ''}`}
                         >
                           <div className="flex items-center justify-between overflow-hidden w-full">
-                            <div className="flex items-center gap-2 overflow-hidden flex-1">
+                            <div className="flex items-center gap-1.5 overflow-hidden flex-1">
                               <span
                                 {...provided.dragHandleProps}
                                 className="text-zinc-400 dark:text-zinc-600 group-hover:text-zinc-600 dark:group-hover:text-zinc-400 cursor-grab active:cursor-grabbing p-0.5"
@@ -284,16 +318,14 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                               </span>
 
                               {chapter.chapterImage && (
-                                <img src={chapter.chapterImage} alt="Chapter Illustration" className="w-5 h-5 rounded object-cover border border-zinc-200 dark:border-zinc-700 shrink-0" />
+                                <img src={chapter.chapterImage} alt="Illustration" className="w-5 h-5 rounded object-cover border border-zinc-200 dark:border-zinc-700 shrink-0" />
                               )}
 
-                              <span className="truncate">{chapter.title || `Chapter ${index + 1}`}</span>
+                              <span className="truncate leading-tight">{chapter.title || `Chapter ${index + 1}`}</span>
                             </div>
 
-                            <div className="flex items-center gap-1.5 shrink-0 ml-1">
-                              <span className="text-[10px] text-zinc-500 font-mono">
-                                {chapter.wordCount}/{chGoal}w
-                              </span>
+                            <div className="flex items-center gap-1 shrink-0 ml-1">
+                              {getStatusBadge(chapter.status)}
                               {chapters.length > 1 && (
                                 <button
                                   onClick={(e) => {
@@ -308,6 +340,26 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                               )}
                             </div>
                           </div>
+
+                          {/* POV Badges & Scene Tags */}
+                          {(chapter.pov || (chapter.tags && chapter.tags.length > 0)) && (
+                            <div className="flex items-center gap-1 overflow-hidden flex-wrap pl-5 text-[9px]">
+                              {chapter.pov && (
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-mono">
+                                  <UserCheck className="w-2.5 h-2.5 text-indigo-500" />
+                                  <span>{chapter.pov}</span>
+                                </span>
+                              )}
+                              {(chapter.tags || []).slice(0, 2).map((tag) => (
+                                <span
+                                  key={tag}
+                                  className="px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 font-medium"
+                                >
+                                  #{tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
 
                           {/* Per-Chapter Word Count Mini Progress Bar */}
                           <div className="w-full bg-zinc-200 dark:bg-zinc-800/80 h-1 rounded-full overflow-hidden mt-0.5">
@@ -337,14 +389,19 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
       </div>
 
       {/* Footer */}
-      <div className="p-3 bg-zinc-50 dark:bg-zinc-950/60 border-t border-zinc-200 dark:border-zinc-800/80 text-[11px] text-zinc-500">
-        <div className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300 font-medium mb-0.5">
+      <div className="p-3 bg-zinc-50 dark:bg-zinc-950/60 border-t border-zinc-200 dark:border-zinc-800/80 flex items-center justify-between text-[11px] text-zinc-500">
+        <div className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300 font-medium">
           <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
           <span>Top-Down Narrative Flow</span>
         </div>
-        <p className="text-zinc-500 text-[10px] leading-tight">
-          Support for story covers and chapter illustrations.
-        </p>
+        {onOpenCodex && (
+          <button
+            onClick={onOpenCodex}
+            className="px-2 py-1 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-[10px] rounded-lg transition-colors flex items-center gap-1"
+          >
+            <span>Codex 🎭</span>
+          </button>
+        )}
       </div>
     </aside>
   );

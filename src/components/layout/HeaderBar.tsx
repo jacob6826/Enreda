@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  FolderOpen,
   Search,
   Camera,
   Download,
@@ -10,32 +9,28 @@ import {
   Moon,
   ChevronDown,
   Menu,
-  Check,
   RefreshCw,
   CloudOff,
-  PanelRight,
-  Laptop,
   User as UserIcon,
+  Sparkles,
 } from 'lucide-react';
-import type { Story, SyncState, ThemeMode } from '../../types/manuscript';
 import type { User } from 'firebase/auth';
+import type { Story, SyncState, ThemeMode } from '../../types/manuscript';
 
 interface HeaderBarProps {
   story: Story | null;
   syncState: SyncState;
   theme: ThemeMode;
-  user?: User | null;
+  user: User | null;
+  onOpenAuth: () => void;
   onToggleTheme: () => void;
   onSyncNow: () => void;
   onManualSave: () => void;
-  rightInspectorOpen: boolean;
-  onToggleRightInspector: () => void;
   onOpenDashboard: () => void;
   onOpenSearch: () => void;
   onOpenSnapshot: () => void;
   onOpenExport: () => void;
-  onOpenDownloadApp?: () => void;
-  onOpenAuth?: () => void;
+  onOpenCodex?: () => void;
 }
 
 export const HeaderBar: React.FC<HeaderBarProps> = ({
@@ -43,17 +38,15 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   syncState,
   theme,
   user,
+  onOpenAuth,
   onToggleTheme,
   onSyncNow,
   onManualSave,
-  rightInspectorOpen,
-  onToggleRightInspector,
   onOpenDashboard,
   onOpenSearch,
   onOpenSnapshot,
   onOpenExport,
-  onOpenDownloadApp,
-  onOpenAuth,
+  onOpenCodex,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -106,6 +99,18 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
 
       {/* Right Group: Ultra-Clean Icon Action Bar */}
       <div className="flex items-center gap-1.5 z-10">
+        {/* Codex Button */}
+        {onOpenCodex && (
+          <button
+            onClick={onOpenCodex}
+            className="px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
+            title="Character & Worldbuilding Codex"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+            <span className="hidden sm:inline">Codex 🎭</span>
+          </button>
+        )}
+
         {/* Save Icon Button + Micro Sync Indicator */}
         <div className="relative">
           <button
@@ -169,23 +174,16 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
                 Studio Actions
               </div>
 
-              {onOpenAuth && (
+              {onOpenCodex && (
                 <button
                   onClick={() => {
-                    onOpenAuth();
+                    onOpenCodex();
                     setMenuOpen(false);
                   }}
-                  className="w-full px-3.5 py-2 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center justify-between transition-colors"
+                  className="w-full px-3.5 py-2 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center gap-2 transition-colors font-semibold text-indigo-600 dark:text-indigo-400"
                 >
-                  <div className="flex items-center gap-2">
-                    <UserIcon className="w-4 h-4 text-indigo-500" />
-                    <span>{user ? 'Account Settings' : 'Sign In / Account'}</span>
-                  </div>
-                  {user && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 font-semibold truncate max-w-[70px]">
-                      {user.email?.split('@')[0]}
-                    </span>
-                  )}
+                  <Sparkles className="w-4 h-4 text-indigo-500" />
+                  <span>Story Codex & Character Bible</span>
                 </button>
               )}
 
@@ -231,38 +229,17 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
                 <span>Export Manuscript (.md, .docx, .pdf)</span>
               </button>
 
-              {onOpenDownloadApp && (
-                <button
-                  onClick={() => {
-                    onOpenDownloadApp();
-                    setMenuOpen(false);
-                  }}
-                  className="w-full px-3.5 py-2 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center justify-between transition-colors text-indigo-600 dark:text-indigo-400 font-medium"
-                >
-                  <div className="flex items-center gap-2">
-                    <Laptop className="w-4 h-4 text-indigo-500" />
-                    <span>Get Desktop App (Mac/Win)</span>
-                  </div>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/60 font-semibold">
-                    New
-                  </span>
-                </button>
-              )}
-
               <div className="my-1 border-t border-zinc-100 dark:border-zinc-800/80" />
 
               <button
                 onClick={() => {
-                  onToggleRightInspector();
+                  onOpenAuth();
                   setMenuOpen(false);
                 }}
-                className="w-full px-3.5 py-2 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center justify-between transition-colors"
+                className="w-full px-3.5 py-2 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center gap-2 transition-colors"
               >
-                <div className="flex items-center gap-2">
-                  <PanelRight className="w-4 h-4 text-zinc-400" />
-                  <span>Right Overview Inspector</span>
-                </div>
-                {rightInspectorOpen && <Check className="w-3.5 h-3.5 text-indigo-500" />}
+                <UserIcon className="w-4 h-4 text-indigo-500" />
+                <span>{user ? 'Account Settings' : 'Sign In / Account'}</span>
               </button>
             </div>
           )}
