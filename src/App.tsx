@@ -171,7 +171,6 @@ export function App() {
           onOpenSearch={() => setIsSearchOpen(true)}
           onOpenSnapshot={() => setIsSnapshotOpen(true)}
           onOpenExport={() => setIsExportOpen(true)}
-          onOpenCodex={() => setIsCodexOpen(true)}
         />
       )}
 

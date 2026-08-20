@@ -12,7 +12,6 @@ import {
   RefreshCw,
   CloudOff,
   User as UserIcon,
-  Sparkles,
 } from 'lucide-react';
 import type { User } from 'firebase/auth';
 import type { Story, SyncState, ThemeMode } from '../../types/manuscript';
@@ -30,7 +29,6 @@ interface HeaderBarProps {
   onOpenSearch: () => void;
   onOpenSnapshot: () => void;
   onOpenExport: () => void;
-  onOpenCodex?: () => void;
 }
 
 export const HeaderBar: React.FC<HeaderBarProps> = ({
@@ -46,7 +44,6 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   onOpenSearch,
   onOpenSnapshot,
   onOpenExport,
-  onOpenCodex,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -99,18 +96,6 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
 
       {/* Right Group: Ultra-Clean Icon Action Bar */}
       <div className="flex items-center gap-1.5 z-10">
-        {/* Codex Button */}
-        {onOpenCodex && (
-          <button
-            onClick={onOpenCodex}
-            className="px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
-            title="Character & Worldbuilding Codex"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
-            <span className="hidden sm:inline">Codex 🎭</span>
-          </button>
-        )}
-
         {/* Save Icon Button + Micro Sync Indicator */}
         <div className="relative">
           <button
@@ -173,19 +158,6 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
               <div className="px-3 py-1.5 border-b border-zinc-100 dark:border-zinc-800/80 font-semibold text-[10px] text-zinc-400 uppercase tracking-wider">
                 Studio Actions
               </div>
-
-              {onOpenCodex && (
-                <button
-                  onClick={() => {
-                    onOpenCodex();
-                    setMenuOpen(false);
-                  }}
-                  className="w-full px-3.5 py-2 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center gap-2 transition-colors font-semibold text-indigo-600 dark:text-indigo-400"
-                >
-                  <Sparkles className="w-4 h-4 text-indigo-500" />
-                  <span>Story Codex & Character Bible</span>
-                </button>
-              )}
 
               <button
                 onClick={() => {

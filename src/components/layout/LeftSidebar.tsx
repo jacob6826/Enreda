@@ -14,7 +14,6 @@ import {
   X,
   Feather,
   UserCheck,
-  Tag,
 } from 'lucide-react';
 import type { Chapter, Story, ChapterStatus } from '../../types/manuscript';
 
@@ -225,6 +224,26 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
           )}
         </div>
 
+        {/* Story Codex & Bible Button directly below Logline / Pitch */}
+        {onOpenCodex && (
+          <div className="mt-2">
+            <button
+              type="button"
+              onClick={onOpenCodex}
+              className="w-full flex items-center justify-between py-1.5 px-2.5 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/60 rounded-lg text-xs font-semibold transition-colors shadow-2xs group"
+              title="Open Story Codex & Character Bible"
+            >
+              <div className="flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                <span className="text-[11px] font-bold">Story Codex & Bible</span>
+              </div>
+              <span className="text-[10px] bg-indigo-100 dark:bg-indigo-900/80 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.2 rounded font-mono">
+                Codex 🎭
+              </span>
+            </button>
+          </div>
+        )}
+
         {/* Target Word Count Goal Bar */}
         <div className="mt-2.5 pt-2 border-t border-zinc-200 dark:border-zinc-800/60">
           <div className="flex items-center justify-between text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mb-1">
@@ -389,19 +408,11 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
       </div>
 
       {/* Footer */}
-      <div className="p-3 bg-zinc-50 dark:bg-zinc-950/60 border-t border-zinc-200 dark:border-zinc-800/80 flex items-center justify-between text-[11px] text-zinc-500">
+      <div className="p-3 bg-zinc-50 dark:bg-zinc-950/60 border-t border-zinc-200 dark:border-zinc-800/80 text-[11px] text-zinc-500">
         <div className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300 font-medium">
           <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
           <span>Top-Down Narrative Flow</span>
         </div>
-        {onOpenCodex && (
-          <button
-            onClick={onOpenCodex}
-            className="px-2 py-1 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-[10px] rounded-lg transition-colors flex items-center gap-1"
-          >
-            <span>Codex 🎭</span>
-          </button>
-        )}
       </div>
     </aside>
   );
