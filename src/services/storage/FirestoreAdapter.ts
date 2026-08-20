@@ -15,6 +15,17 @@ import type { Story, Chapter, Snapshot, CodexEntry } from '../../types/manuscrip
 import { indexedDBAdapter } from './IndexedDBAdapter';
 import type { StorageAdapter } from './IndexedDBAdapter';
 
+// Helper to remove any undefined properties that cause Firestore setDoc to fail
+function sanitizeForFirestore<T extends Record<string, any>>(obj: T): T {
+  const clean: Record<string, any> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      clean[key] = value;
+    }
+  }
+  return clean as T;
+}
+
 export function subscribeToRealtimeSync(
   userId: string,
   activeStoryId: string | null,
@@ -143,7 +154,7 @@ export function createFirestoreAdapter(userId: string | null): StorageAdapter {
         for (const local of localStories) {
           if (!storyMap.has(local.id)) {
             storyMap.set(local.id, local);
-            setDoc(doc(storiesCol, local.id), local, { merge: true }).catch(console.warn);
+            setDoc(doc(storiesCol, local.id), sanitizeForFirestore(local), { merge: true }).catch(console.warn);
           }
         }
 
@@ -170,7 +181,7 @@ export function createFirestoreAdapter(userId: string | null): StorageAdapter {
     async saveStory(story: Story): Promise<void> {
       await indexedDBAdapter.saveStory(story);
       try {
-        await setDoc(doc(storiesCol, story.id), story, { merge: true });
+        await setDoc(doc(storiesCol, story.id), sanitizeForFirestore(story), { merge: true });
       } catch (err) {
         console.warn('Firestore story save failed:', err);
       }
@@ -206,7 +217,7 @@ export function createFirestoreAdapter(userId: string | null): StorageAdapter {
         if (chapters.length === 0) {
           if (localChs.length > 0) {
             const batch = writeBatch(db);
-            localChs.forEach((ch) => batch.set(doc(chaptersCol, ch.id), ch, { merge: true }));
+            localChs.forEach((ch) => batch.set(doc(chaptersCol, ch.id), sanitizeForFirestore(ch), { merge: true }));
             await batch.commit();
           }
           return localChs;
@@ -223,7 +234,7 @@ export function createFirestoreAdapter(userId: string | null): StorageAdapter {
         for (const local of localChs) {
           if (!chMap.has(local.id)) {
             chMap.set(local.id, local);
-            setDoc(doc(chaptersCol, local.id), local, { merge: true }).catch(console.warn);
+            setDoc(doc(chaptersCol, local.id), sanitizeForFirestore(local), { merge: true }).catch(console.warn);
           }
         }
 
@@ -248,7 +259,7 @@ export function createFirestoreAdapter(userId: string | null): StorageAdapter {
     async saveChapter(chapter: Chapter): Promise<void> {
       await indexedDBAdapter.saveChapter(chapter);
       try {
-        await setDoc(doc(chaptersCol, chapter.id), chapter, { merge: true });
+        await setDoc(doc(chaptersCol, chapter.id), sanitizeForFirestore(chapter), { merge: true });
       } catch (err) {
         console.warn('Firestore chapter save failed:', err);
       }
@@ -259,7 +270,7 @@ export function createFirestoreAdapter(userId: string | null): StorageAdapter {
       try {
         const batch = writeBatch(db);
         chapters.forEach((ch) => {
-          batch.set(doc(chaptersCol, ch.id), ch, { merge: true });
+          batch.set(doc(chaptersCol, ch.id), sanitizeForFirestore(ch), { merge: true });
         });
         await batch.commit();
       } catch (err) {
@@ -302,7 +313,7 @@ export function createFirestoreAdapter(userId: string | null): StorageAdapter {
               for (const entry of matchingEntries) {
                 const updated = { ...entry, storyId };
                 entries.push(updated);
-                await setDoc(doc(codexCol, entry.id), updated, { merge: true });
+                await setDoc(doc(codexCol, entry.id), sanitizeForFirestore(updated), { merge: true });
                 await indexedDBAdapter.saveCodexEntry(updated);
               }
             }
@@ -324,7 +335,7 @@ export function createFirestoreAdapter(userId: string | null): StorageAdapter {
         for (const local of localEntries) {
           if (local.storyId === storyId && !entryMap.has(local.id)) {
             entryMap.set(local.id, local);
-            setDoc(doc(codexCol, local.id), local, { merge: true }).catch(console.warn);
+            setDoc(doc(codexCol, local.id), sanitizeForFirestore(local), { merge: true }).catch(console.warn);
           }
         }
 
@@ -338,7 +349,9 @@ export function createFirestoreAdapter(userId: string | null): StorageAdapter {
     async saveCodexEntry(entry: CodexEntry): Promise<void> {
       await indexedDBAdapter.saveCodexEntry(entry);
       try {
-        await setDoc(doc(codexCol, entry.id), entry, { merge: true });
+        const cleanEntry = sanitizeForFirestore(entry);
+        await setDoc(doc(codexCol, entry.id), cleanEntry, { merge: true });
+        console.log(`[FirestoreSync] Codex entry saved to cloud successfully: ${entry.name}`);
       } catch (err) {
         console.warn('Firestore codex save failed:', err);
       }
@@ -370,7 +383,7 @@ export function createFirestoreAdapter(userId: string | null): StorageAdapter {
     async createSnapshot(storyId: string, label: string): Promise<Snapshot> {
       const snap = await indexedDBAdapter.createSnapshot(storyId, label);
       try {
-        await setDoc(doc(snapshotsCol, snap.id), snap);
+        await setDoc(doc(snapshotsCol, snap.id), sanitizeForFirestore(snap));
       } catch (err) {
         console.warn('Firestore snapshot creation failed:', err);
       }
