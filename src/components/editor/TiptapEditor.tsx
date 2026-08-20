@@ -3,6 +3,7 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import CharacterCount from '@tiptap/extension-character-count';
+import { SpellcheckExtension } from '../../extensions/spellcheckExtension';
 import { EditorToolbar } from './EditorToolbar';
 import { calculateWordCount } from '../../hooks/useWordCount';
 import { Image as ImageIcon, Upload, X } from 'lucide-react';
@@ -48,6 +49,9 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
         placeholder: 'Begin drafting chapter prose...',
       }),
       CharacterCount,
+      SpellcheckExtension.configure({
+        enabled: spellcheckEnabled,
+      }),
     ],
     editorProps: {
       attributes: {
@@ -66,7 +70,7 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
     },
   });
 
-  // Synchronize native browser spellcheck on editor DOM element
+  // Synchronize spellcheck attributes on editor DOM element
   useEffect(() => {
     if (editor && editor.view && editor.view.dom) {
       const dom = editor.view.dom as HTMLElement;

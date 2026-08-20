@@ -7,7 +7,7 @@ export interface SpellcheckOptions {
   enabled: boolean;
 }
 
-export const spellcheckPluginKey = new PluginKey('spellcheckPlugin');
+export const spellcheckPluginKey = new PluginKey('spellcheckPluginKey');
 
 export const SpellcheckExtension = Extension.create<SpellcheckOptions>({
   name: 'spellcheckExtension',
@@ -31,24 +31,30 @@ export const SpellcheckExtension = Extension.create<SpellcheckOptions>({
             }
 
             const decorations: Decoration[] = [];
-            const { doc } = state;
+            const { doc, selection } = state;
+            const activePos = selection.from;
 
             doc.descendants((node, pos) => {
               if (node.isText && node.text) {
                 const text = node.text;
-                // Match word tokens (at least 2 letters)
+                // Match word tokens
                 const regex = /\b[a-zA-Z']{2,}\b/g;
                 let match: RegExpExecArray | null;
 
                 while ((match = regex.exec(text)) !== null) {
                   const word = match[0];
+                  const start = pos + match.index;
+                  const end = start + word.length;
+
+                  // CRITICAL: Skip the word currently being typed where the cursor caret is sitting!
+                  if (activePos >= start && activePos <= end + 1) {
+                    continue;
+                  }
+
                   const isSpelledRight = checkWordSpelling(word);
 
                   if (!isSpelledRight) {
-                    const start = pos + match.index;
-                    const end = start + word.length;
                     const suggestions = getSpellingSuggestions(word);
-
                     decorations.push(
                       Decoration.inline(start, end, {
                         class: 'spellcheck-error underline decoration-wavy decoration-red-500 decoration-2 bg-red-500/10 dark:bg-red-500/20 rounded-xs cursor-pointer',
