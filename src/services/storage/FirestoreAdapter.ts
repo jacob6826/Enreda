@@ -113,22 +113,22 @@ export function createFirestoreAdapter(userId: string | null): StorageAdapter {
 
         const localStories = await indexedDBAdapter.getStories();
 
-        // Seed or pull local fallback if Firestore returns empty
-        if (firestoreStories.length === 0) {
-          if (localStories.length > 0) {
-            console.log('[FirestoreSync] Uploading local IndexedDB stories to Firestore...');
-            for (const story of localStories) {
-              await setDoc(doc(storiesCol, story.id), story, { merge: true });
-              const localChs = await indexedDBAdapter.getChapters(story.id);
-              for (const ch of localChs) {
-                await setDoc(doc(chaptersCol, ch.id), ch, { merge: true });
-              }
-              const localCodex = await indexedDBAdapter.getCodex(story.id);
-              for (const entry of localCodex) {
-                await setDoc(doc(codexCol, entry.id), entry, { merge: true });
-              }
+        // Reconcile local stories with firestore stories by title if IDs differ
+        for (const fs of firestoreStories) {
+          const matchingLocal = localStories.find(
+            (ls) => ls.title.trim().toLowerCase() === fs.title.trim().toLowerCase() && ls.id !== fs.id
+          );
+          if (matchingLocal) {
+            console.log(`[FirestoreSync] Reconciling story ID for "${fs.title}": local ${matchingLocal.id} -> cloud ${fs.id}`);
+            const localChs = await indexedDBAdapter.getChapters(matchingLocal.id);
+            for (const ch of localChs) {
+              await indexedDBAdapter.saveChapter({ ...ch, storyId: fs.id });
             }
-            return localStories;
+            const localCodex = await indexedDBAdapter.getCodex(matchingLocal.id);
+            for (const entry of localCodex) {
+              await indexedDBAdapter.saveCodexEntry({ ...entry, storyId: fs.id });
+            }
+            await indexedDBAdapter.deleteStory(matchingLocal.id);
           }
         }
 
@@ -280,28 +280,38 @@ export function createFirestoreAdapter(userId: string | null): StorageAdapter {
       try {
         console.log(`[FirestoreSync] Fetching Codex entries for storyId: ${storyId}`);
         const snap = await getDocs(codexCol);
-        const entries: CodexEntry[] = [];
+        const allCloudEntries: CodexEntry[] = [];
         snap.forEach((d) => {
-          const data = d.data() as CodexEntry;
-          if (data.storyId === storyId) {
-            entries.push(data);
-          }
+          allCloudEntries.push(d.data() as CodexEntry);
         });
+
+        // Filter entries for this storyId
+        let entries = allCloudEntries.filter((e) => e.storyId === storyId);
+
+        // Auto-reconciliation: If no entries match storyId directly, check for entries with unassigned/legacy storyId
+        if (entries.length === 0 && allCloudEntries.length > 0) {
+          const userStories = await this.getStories();
+          const currentStory = userStories.find((s) => s.id === storyId);
+          if (currentStory) {
+            const matchingEntries = allCloudEntries.filter((e) => {
+              const belongsToOtherStory = userStories.some((s) => s.id === e.storyId && s.id !== storyId);
+              return !belongsToOtherStory;
+            });
+            if (matchingEntries.length > 0) {
+              console.log(`[FirestoreSync] Migrating ${matchingEntries.length} codex entries to storyId ${storyId}`);
+              for (const entry of matchingEntries) {
+                const updated = { ...entry, storyId };
+                entries.push(updated);
+                await setDoc(doc(codexCol, entry.id), updated, { merge: true });
+                await indexedDBAdapter.saveCodexEntry(updated);
+              }
+            }
+          }
+        }
+
         entries.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
 
         const localEntries = await indexedDBAdapter.getCodex(storyId);
-
-        if (entries.length === 0) {
-          if (localEntries.length > 0) {
-            console.log('[FirestoreSync] Uploading local Codex entries to Firestore...');
-            const batch = writeBatch(db);
-            localEntries.forEach((entry) => {
-              batch.set(doc(codexCol, entry.id), entry, { merge: true });
-            });
-            await batch.commit();
-          }
-          return localEntries;
-        }
 
         // Cache cloud entries down to local IndexedDB for offline support
         for (const entry of entries) {

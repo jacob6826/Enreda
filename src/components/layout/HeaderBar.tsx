@@ -1,27 +1,28 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
+  Save,
   Search,
+  Menu,
+  Moon,
+  Sun,
   Camera,
   Download,
-  BookOpen,
-  Save,
-  Sun,
-  Moon,
-  ChevronDown,
-  Menu,
-  RefreshCw,
-  CloudOff,
   User as UserIcon,
+  CloudOff,
+  RefreshCw,
+  BookOpen,
   Laptop,
+  CheckCircle2,
+  LogIn,
 } from 'lucide-react';
+import type { Story, ThemeMode, SyncState } from '../../types/manuscript';
 import type { User } from 'firebase/auth';
-import type { Story, SyncState, ThemeMode } from '../../types/manuscript';
 
 interface HeaderBarProps {
   story: Story | null;
   syncState: SyncState;
   theme: ThemeMode;
-  user: User | null;
+  user?: User | null;
   onOpenAuth: () => void;
   onToggleTheme: () => void;
   onSyncNow: () => void;
@@ -40,7 +41,6 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   user,
   onOpenAuth,
   onToggleTheme,
-  onSyncNow,
   onManualSave,
   onOpenDashboard,
   onOpenSearch,
@@ -51,10 +51,10 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Close hamburger menu when clicking outside
+  // Close dropdown menu when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setMenuOpen(false);
       }
     };
@@ -63,42 +63,63 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   }, []);
 
   return (
-    <header className="h-[60px] bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800/90 px-5 flex items-center justify-between select-none z-30 shrink-0 shadow-sm dark:shadow-none transition-colors relative">
-      {/* Left Group: Manuscript Selector Pill */}
-      <div className="flex items-center gap-2.5 z-10">
+    <header className="h-12 bg-white/95 dark:bg-zinc-900/90 light:bg-white border-b border-zinc-200 dark:border-zinc-800/80 px-4 flex items-center justify-between select-none relative z-30 shrink-0 backdrop-blur-md">
+      {/* Left Group: Active Story Dropdown Selector */}
+      <div className="flex items-center gap-2 z-10">
         <button
           onClick={onOpenDashboard}
-          className="flex items-center gap-2 px-3 py-1.5 bg-zinc-50 dark:bg-zinc-800/50 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-lg border border-zinc-200 dark:border-zinc-700/60 text-xs font-semibold transition-all max-w-[200px] sm:max-w-xs group shadow-2xs"
-          title="Switch Manuscripts"
+          className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-zinc-100/80 dark:bg-zinc-800/60 hover:bg-zinc-200/80 dark:hover:bg-zinc-700/60 border border-zinc-200/80 dark:border-zinc-700/50 transition-colors group max-w-[240px] sm:max-w-xs"
+          title="Switch or Manage Manuscripts"
         >
-          {story?.coverImage ? (
-            <img src={story.coverImage} alt="Cover" className="w-4 h-5 rounded object-cover border border-zinc-300 dark:border-zinc-600 shrink-0" />
-          ) : (
-            <BookOpen className="w-4 h-4 text-indigo-500 shrink-0" />
-          )}
-          <span className="truncate">{story ? story.title : 'Select Story'}</span>
-          <ChevronDown className="w-3.5 h-3.5 text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-200 shrink-0 ml-0.5 transition-colors" />
+          <BookOpen className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+          <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 truncate">
+            {story ? story.title : 'Select Story'}
+          </span>
+          <span className="text-[10px] text-zinc-400 font-mono shrink-0 group-hover:text-indigo-500 transition-colors">
+            ▼
+          </span>
         </button>
       </div>
 
-      {/* Absolute Centered Branding (Clean Single-Line) */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div
-          className="pointer-events-auto flex items-center gap-2 cursor-pointer group px-3 py-1 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors"
-          onClick={onOpenDashboard}
-          title="Enreda Manuscript Studio"
-        >
-          <span className="text-base font-extrabold tracking-widest text-zinc-900 dark:text-white font-sans group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+      {/* Center Branding */}
+      <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 pointer-events-none">
+        <div className="flex items-center gap-1.5">
+          <span className="font-extrabold tracking-wider text-sm bg-gradient-to-r from-zinc-900 via-indigo-950 to-zinc-900 dark:from-white dark:via-indigo-200 dark:to-white bg-clip-text text-transparent">
             ENREDA
           </span>
-          <span className="text-xs font-mono tracking-wider uppercase text-zinc-400 dark:text-zinc-500 font-semibold">
+          <span className="text-[10px] font-bold tracking-widest text-zinc-400 dark:text-zinc-500 uppercase">
             manuscript studio
           </span>
         </div>
       </div>
 
-      {/* Right Group: Ultra-Clean Icon Action Bar */}
-      <div className="flex items-center gap-1.5 z-10">
+      {/* Right Group: Action Bar & Account Status */}
+      <div className="flex items-center gap-2 z-10">
+        {/* Account / Cloud Sync Badge Button */}
+        <button
+          onClick={onOpenAuth}
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold transition-all ${
+            user
+              ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40'
+              : 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800/60 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40'
+          }`}
+          title={user ? `Signed in as ${user.email}. Click for Account Settings.` : 'Guest Mode (Click to Sign In & Sync Cloud)'}
+        >
+          {user ? (
+            <>
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span className="hidden sm:inline truncate max-w-[110px]">
+                {user.email?.split('@')[0]}
+              </span>
+            </>
+          ) : (
+            <>
+              <LogIn className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+              <span className="hidden sm:inline">Sign In</span>
+            </>
+          )}
+        </button>
+
         {/* Save Icon Button + Micro Sync Indicator */}
         <div className="relative">
           <button
