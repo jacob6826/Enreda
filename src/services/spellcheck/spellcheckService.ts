@@ -1,4 +1,5 @@
 import { ENGLISH_DICTIONARY } from './dictionaryData';
+import type { CodexEntry } from '../../types/manuscript';
 
 const COMMON_TYPOS: Record<string, string[]> = {
   corect: ['correct'],
@@ -20,27 +21,55 @@ const COMMON_TYPOS: Record<string, string[]> = {
 };
 
 /**
- * Checks if a word is valid English
+ * Dynamic set of custom codex entry words (character names, places, lore terms)
+ */
+const CUSTOM_CODEX_WORDS = new Set<string>();
+
+export function updateCustomCodexWords(entries: CodexEntry[]) {
+  CUSTOM_CODEX_WORDS.clear();
+  entries.forEach((entry) => {
+    if (entry.name) {
+      entry.name.split(/\s+/).forEach((w) => {
+        const clean = w.toLowerCase().replace(/[^a-z']/g, '');
+        if (clean.length > 1) CUSTOM_CODEX_WORDS.add(clean);
+      });
+    }
+  });
+}
+
+/**
+ * Checks if a word is valid English or part of the story codex
  */
 export function checkWordSpelling(word: string): boolean {
+  // Normalize casing & strip punctuation
   const clean = word.toLowerCase().replace(/[^a-z']/g, '');
   if (!clean || clean.length <= 1) return true;
   if (/^\d+$/.test(clean)) return true; // Numbers are valid
-  if (ENGLISH_DICTIONARY.has(clean)) return true;
 
-  // Check plural / verb endings
-  if (clean.endsWith('s') && ENGLISH_DICTIONARY.has(clean.slice(0, -1))) return true;
-  if (clean.endsWith('es') && ENGLISH_DICTIONARY.has(clean.slice(0, -2))) return true;
-  if (clean.endsWith('ed') && ENGLISH_DICTIONARY.has(clean.slice(0, -2))) return true;
-  if (clean.endsWith('ed') && ENGLISH_DICTIONARY.has(clean.slice(0, -1))) return true; // e.g. saved -> save
-  if (clean.endsWith('ing') && ENGLISH_DICTIONARY.has(clean.slice(0, -3))) return true;
-  if (clean.endsWith('ing') && ENGLISH_DICTIONARY.has(clean.slice(0, -3) + 'e')) return true; // e.g. writing -> write
-  if (clean.endsWith('ly') && ENGLISH_DICTIONARY.has(clean.slice(0, -2))) return true;
+  // 1. Direct dictionary match or custom codex match
+  if (ENGLISH_DICTIONARY.has(clean) || CUSTOM_CODEX_WORDS.has(clean)) return true;
 
-  // Check common prefixes
+  // 2. Plural / Verb / Adjective Suffix stemming rules
+  if (clean.endsWith("'s") && (ENGLISH_DICTIONARY.has(clean.slice(0, -2)) || CUSTOM_CODEX_WORDS.has(clean.slice(0, -2)))) return true;
+  if (clean.endsWith("s") && (ENGLISH_DICTIONARY.has(clean.slice(0, -1)) || CUSTOM_CODEX_WORDS.has(clean.slice(0, -1)))) return true;
+  if (clean.endsWith("es") && ENGLISH_DICTIONARY.has(clean.slice(0, -2))) return true;
+  if (clean.endsWith("ies") && ENGLISH_DICTIONARY.has(clean.slice(0, -3) + 'y')) return true; // e.g. cities -> city
+  if (clean.endsWith("ed") && ENGLISH_DICTIONARY.has(clean.slice(0, -2))) return true;
+  if (clean.endsWith("ed") && ENGLISH_DICTIONARY.has(clean.slice(0, -1))) return true; // e.g. saved -> save
+  if (clean.endsWith("ing") && ENGLISH_DICTIONARY.has(clean.slice(0, -3))) return true;
+  if (clean.endsWith("ing") && ENGLISH_DICTIONARY.has(clean.slice(0, -3) + 'e')) return true; // e.g. writing -> write
+  if (clean.endsWith("er") && ENGLISH_DICTIONARY.has(clean.slice(0, -2))) return true;
+  if (clean.endsWith("est") && ENGLISH_DICTIONARY.has(clean.slice(0, -3))) return true;
+  if (clean.endsWith("ly") && ENGLISH_DICTIONARY.has(clean.slice(0, -2))) return true;
+  if (clean.endsWith("ness") && ENGLISH_DICTIONARY.has(clean.slice(0, -4))) return true;
+  if (clean.endsWith("ment") && ENGLISH_DICTIONARY.has(clean.slice(0, -4))) return true;
+
+  // 3. Prefix stemming rules
   if (clean.startsWith('un') && ENGLISH_DICTIONARY.has(clean.slice(2))) return true;
   if (clean.startsWith('re') && ENGLISH_DICTIONARY.has(clean.slice(2))) return true;
   if (clean.startsWith('in') && ENGLISH_DICTIONARY.has(clean.slice(2))) return true;
+  if (clean.startsWith('dis') && ENGLISH_DICTIONARY.has(clean.slice(3))) return true;
+  if (clean.startsWith('mis') && ENGLISH_DICTIONARY.has(clean.slice(3))) return true;
 
   return false;
 }

@@ -4,15 +4,18 @@ import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import CharacterCount from '@tiptap/extension-character-count';
 import { SpellcheckExtension } from '../../extensions/spellcheckExtension';
+import { updateCustomCodexWords } from '../../services/spellcheck/spellcheckService';
 import { EditorToolbar } from './EditorToolbar';
 import { calculateWordCount } from '../../hooks/useWordCount';
 import { Image as ImageIcon, Upload, X } from 'lucide-react';
+import type { CodexEntry } from '../../types/manuscript';
 
 interface TiptapEditorProps {
   content: string;
   chapterTitle: string;
   chapterOverview: string;
   chapterImage?: string;
+  codexEntries?: CodexEntry[];
   focusMode: boolean;
   onToggleFocusMode: () => void;
   onContentChange: (html: string, wordCount: number) => void;
@@ -29,6 +32,7 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
   chapterTitle,
   chapterOverview,
   chapterImage,
+  codexEntries,
   focusMode,
   onToggleFocusMode,
   onContentChange,
@@ -41,6 +45,13 @@ export const TiptapEditor: React.FC<TiptapEditorProps> = ({
 }) => {
   const [showImageInput, setShowImageInput] = useState(false);
   const [spellcheckEnabled, setSpellcheckEnabled] = useState(true);
+
+  // Update codex whitelist words whenever codex entries change
+  useEffect(() => {
+    if (codexEntries) {
+      updateCustomCodexWords(codexEntries);
+    }
+  }, [codexEntries]);
 
   const editor = useEditor({
     extensions: [

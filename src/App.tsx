@@ -208,6 +208,7 @@ export function App() {
               chapterTitle={activeChapter.title}
               chapterOverview={activeChapter.overview}
               chapterImage={activeChapter.chapterImage}
+              codexEntries={codexEntries}
               focusMode={focusMode}
               onToggleFocusMode={() => setFocusMode(!focusMode)}
               onContentChange={(html, wordCount) => {
