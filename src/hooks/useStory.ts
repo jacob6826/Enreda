@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import type { Story, Chapter, Snapshot, SyncState, CodexEntry } from '../types/manuscript';
-import { createFirestoreAdapter } from '../services/storage/FirestoreAdapter';
+import { createFirestoreAdapter, subscribeToRealtimeSync } from '../services/storage/FirestoreAdapter';
 import { parseOverviewToChapters } from '../services/parser/outlineParser';
 import type { User } from 'firebase/auth';
 
@@ -19,6 +19,15 @@ export function useStory(user?: User | null) {
 
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const snapshotTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Broadcast instant sync helper for local cross-tab / cross-process updates
+  const notifyBroadcastSync = useCallback(() => {
+    try {
+      const channel = new BroadcastChannel('enreda_sync_channel');
+      channel.postMessage({ type: 'REFRESH_DATA', timestamp: Date.now() });
+      channel.close();
+    } catch {}
+  }, []);
 
   // Initialize DB and load active story
   const refreshStories = useCallback(async (preferredStoryId?: string) => {
@@ -56,6 +65,50 @@ export function useStory(user?: User | null) {
     refreshStories();
   }, [user?.uid, storage]);
 
+  // Real-time Firestore Sync (<1 second cloud sync across all devices)
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    const unsubscribe = subscribeToRealtimeSync(user.uid, activeStory?.id || null, {
+      onStoriesUpdate: (updatedStories) => {
+        setStories((prev) => {
+          // Merge to prevent local active changes from being lost
+          const map = new Map<string, Story>();
+          updatedStories.forEach((s) => map.set(s.id, s));
+          prev.forEach((s) => {
+            if (!map.has(s.id)) map.set(s.id, s);
+          });
+          return Array.from(map.values()).sort((a, b) => b.updatedAt - a.updatedAt);
+        });
+      },
+      onChaptersUpdate: (updatedChapters) => {
+        setChapters(updatedChapters);
+      },
+      onCodexUpdate: (updatedCodex) => {
+        setCodexEntries(updatedCodex);
+      },
+    });
+
+    return () => unsubscribe();
+  }, [user?.uid, activeStory?.id]);
+
+  // Instant local cross-window BroadcastChannel listener (<0.1 second sync)
+  useEffect(() => {
+    try {
+      const channel = new BroadcastChannel('enreda_sync_channel');
+      channel.onmessage = () => {
+        if (activeStory) {
+          storage.getStories().then(setStories).catch(console.warn);
+          storage.getChapters(activeStory.id).then(setChapters).catch(console.warn);
+          storage.getCodex(activeStory.id).then(setCodexEntries).catch(console.warn);
+        }
+      };
+      return () => channel.close();
+    } catch {
+      return () => {};
+    }
+  }, [activeStory, storage]);
+
   // 15-minute Automatic Snapshot timer
   useEffect(() => {
     if (!activeStory) return;
@@ -89,11 +142,12 @@ export function useStory(user?: User | null) {
         setStories(prev => prev.map(s => s.id === updated.id ? updated : s));
         setSyncState('synced');
         setLastSavedTime(Date.now());
+        notifyBroadcastSync();
       } catch {
         setSyncState('offline');
       }
     }, 1500);
-  }, [activeStory, storage]);
+  }, [activeStory, storage, notifyBroadcastSync]);
 
   // Update chapter content/overview/title/status/pov/tags with debounce
   const updateChapter = useCallback((chapterId: string, updates: Partial<Chapter>) => {
@@ -112,6 +166,7 @@ export function useStory(user?: User | null) {
               setActiveStory((s) => s ? { ...s, totalWordCount: totalWords, updatedAt: Date.now() } : null);
               setSyncState('synced');
               setLastSavedTime(Date.now());
+              notifyBroadcastSync();
             } catch {
               setSyncState('offline');
             }
@@ -122,7 +177,7 @@ export function useStory(user?: User | null) {
         return ch;
       });
     });
-  }, [storage]);
+  }, [storage, notifyBroadcastSync]);
 
   // Save Codex Entry
   const saveCodexEntry = useCallback(async (entry: CodexEntry) => {
@@ -137,10 +192,11 @@ export function useStory(user?: User | null) {
     try {
       await storage.saveCodexEntry(fullEntry);
       setSyncState('synced');
+      notifyBroadcastSync();
     } catch {
       setSyncState('offline');
     }
-  }, [activeStory, storage]);
+  }, [activeStory, storage, notifyBroadcastSync]);
 
   // Delete Codex Entry
   const deleteCodexEntry = useCallback(async (entryId: string) => {
@@ -149,10 +205,11 @@ export function useStory(user?: User | null) {
     try {
       await storage.deleteCodexEntry(entryId);
       setSyncState('synced');
+      notifyBroadcastSync();
     } catch {
       setSyncState('offline');
     }
-  }, [storage]);
+  }, [storage, notifyBroadcastSync]);
 
   // Standard Manual Save + Version Snapshot trigger
   const manualSaveAndSnapshot = useCallback(async (customLabel?: string) => {
@@ -163,6 +220,9 @@ export function useStory(user?: User | null) {
 
     await storage.saveStory(activeStory);
     await storage.saveChapters(chapters);
+    for (const entry of codexEntries) {
+      await storage.saveCodexEntry(entry);
+    }
 
     const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     const label = customLabel?.trim() || `Manual Save (${timeStr})`;
@@ -173,72 +233,74 @@ export function useStory(user?: User | null) {
     setSnapshots(updatedSnapshots);
     setSyncState('synced');
     setLastSavedTime(Date.now());
-  }, [activeStory, chapters, storage]);
+    notifyBroadcastSync();
+  }, [activeStory, chapters, codexEntries, storage, notifyBroadcastSync]);
 
   // Add Chapter
   const addChapter = useCallback(async () => {
     if (!activeStory) return;
-    setSyncState('saving');
-    const nextOrder = chapters.length + 1;
+    const now = Date.now();
     const newChapter: Chapter = {
-      id: 'ch-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+      id: 'ch-' + now + '-' + Math.random().toString(36).substr(2, 4),
       storyId: activeStory.id,
-      order: nextOrder,
-      title: `Chapter ${nextOrder}: Untitled`,
-      overview: '',
+      order: chapters.length + 1,
+      title: `Chapter ${chapters.length + 1}`,
+      overview: 'New chapter overview beat...',
       content: '<p></p>',
       wordCount: 0,
       targetWordCount: 2500,
       status: 'drafting',
-      updatedAt: Date.now(),
+      updatedAt: now,
     };
 
-    const updatedList = [...chapters, newChapter];
-    setChapters(updatedList);
+    const updatedChapters = [...chapters, newChapter];
+    setChapters(updatedChapters);
     setActiveChapterId(newChapter.id);
 
     try {
       await storage.saveChapter(newChapter);
-      setSyncState('synced');
-      setLastSavedTime(Date.now());
-    } catch {
-      setSyncState('offline');
+      notifyBroadcastSync();
+    } catch (err) {
+      console.error('Failed to save new chapter:', err);
     }
-  }, [activeStory, chapters, storage]);
+  }, [activeStory, chapters, storage, notifyBroadcastSync]);
 
   // Delete Chapter
   const deleteChapter = useCallback(async (chapterId: string) => {
-    if (!activeStory) return;
-    setSyncState('saving');
+    if (chapters.length <= 1) return;
     const remaining = chapters.filter((c) => c.id !== chapterId);
-    const reordered = remaining.map((c, idx) => ({ ...c, order: idx + 1 }));
+    const reordered = remaining.map((ch, idx) => ({ ...ch, order: idx + 1 }));
     setChapters(reordered);
-    if (activeChapterId === chapterId && reordered.length > 0) {
-      setActiveChapterId(reordered[0].id);
+    if (activeChapterId === chapterId) {
+      setActiveChapterId(reordered[0]?.id || null);
     }
 
     try {
       await storage.deleteChapter(chapterId);
-      setSyncState('synced');
-      setLastSavedTime(Date.now());
-    } catch {
-      setSyncState('offline');
+      const totalWords = reordered.reduce((sum, c) => sum + c.wordCount, 0);
+      if (activeStory) {
+        const updatedStory = { ...activeStory, totalWordCount: totalWords, updatedAt: Date.now() };
+        setActiveStory(updatedStory);
+        await storage.saveStory(updatedStory);
+        setStories(prev => prev.map(s => s.id === updatedStory.id ? updatedStory : s));
+      }
+      notifyBroadcastSync();
+    } catch (err) {
+      console.error('Failed to delete chapter:', err);
     }
-  }, [activeStory, chapters, activeChapterId, storage]);
+  }, [chapters, activeChapterId, activeStory, storage, notifyBroadcastSync]);
 
   // Reorder Chapters
-  const reorderChapters = useCallback(async (reorderedList: Chapter[]) => {
-    const updated = reorderedList.map((c, idx) => ({ ...c, order: idx + 1 }));
+  const reorderChapters = useCallback(async (reordered: Chapter[]) => {
+    const updated = reordered.map((ch, idx) => ({ ...ch, order: idx + 1, updatedAt: Date.now() }));
     setChapters(updated);
-    setSyncState('saving');
     try {
       await storage.saveChapters(updated);
-      setSyncState('synced');
-      setLastSavedTime(Date.now());
-    } catch {
-      setSyncState('offline');
+      notifyBroadcastSync();
+    } catch (err) {
+      console.error('Failed to reorder chapters:', err);
     }
-  }, [storage]);
+  }, [storage, notifyBroadcastSync]);
 
   // Switch Story
   const switchStory = useCallback(async (storyId: string) => {
@@ -308,8 +370,9 @@ export function useStory(user?: User | null) {
     setCodexEntries([]);
     setSnapshots([]);
     setLoading(false);
+    notifyBroadcastSync();
     return newStory;
-  }, [storage]);
+  }, [storage, notifyBroadcastSync]);
 
   // Simple Create Story fallback
   const createNewStory = useCallback(async (title: string, idea = '') => {
@@ -323,43 +386,56 @@ export function useStory(user?: User | null) {
 
   // Delete Story
   const deleteStory = useCallback(async (storyId: string) => {
-    await storage.deleteStory(storyId);
-    const remaining = await storage.getStories();
-    setStories(remaining);
-    if (remaining.length > 0) {
-      switchStory(remaining[0].id);
-    } else {
-      refreshStories();
-    }
-  }, [switchStory, refreshStories, storage]);
-
-  // Generate Chapters from Story Overview
-  const generateChaptersFromOverview = useCallback(async () => {
-    if (!activeStory) return;
-    const generated = parseOverviewToChapters(activeStory.id, activeStory.storyOverview, chapters.length + 1);
-    if (generated.length === 0) return;
-
-    setSyncState('saving');
-    const merged = [...chapters, ...generated];
-    setChapters(merged);
-    await storage.saveChapters(generated);
-    setSyncState('synced');
-    setLastSavedTime(Date.now());
-  }, [activeStory, chapters, storage]);
-
-  // Restore snapshot
-  const restoreSnapshot = useCallback(async (snapshotId: string) => {
+    if (stories.length <= 1) return;
     setLoading(true);
-    const restored = await storage.restoreSnapshot(snapshotId);
-    if (restored) {
-      setActiveStory(restored.story);
-      setChapters(restored.chapters);
-      if (restored.chapters.length > 0) {
-        setActiveChapterId(restored.chapters[0].id);
+    try {
+      await storage.deleteStory(storyId);
+      const remaining = stories.filter(s => s.id !== storyId);
+      setStories(remaining);
+      if (activeStory?.id === storyId && remaining.length > 0) {
+        await switchStory(remaining[0].id);
       }
+      notifyBroadcastSync();
+    } catch (err) {
+      console.error('Failed to delete story:', err);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  }, [storage]);
+  }, [stories, activeStory?.id, storage, switchStory, notifyBroadcastSync]);
+
+  // Generate Chapters from Story Overview AI / Markdown Outline
+  const generateChaptersFromOverview = useCallback(async () => {
+    if (!activeStory || !activeStory.storyOverview) return;
+    const parsed = parseOverviewToChapters(activeStory.id, activeStory.storyOverview, chapters.length + 1);
+    if (parsed.length === 0) return;
+
+    const merged = [...chapters, ...parsed];
+    setChapters(merged);
+    try {
+      await storage.saveChapters(merged);
+      notifyBroadcastSync();
+    } catch (err) {
+      console.error('Failed to save generated chapters:', err);
+    }
+  }, [activeStory, chapters, storage, notifyBroadcastSync]);
+
+  // Restore snapshot version
+  const restoreSnapshot = useCallback(async (snapshotId: string) => {
+    try {
+      const restored = await storage.restoreSnapshot(snapshotId);
+      if (restored) {
+        setActiveStory(restored.story);
+        setChapters(restored.chapters);
+        if (restored.chapters.length > 0) {
+          setActiveChapterId(restored.chapters[0].id);
+        }
+        await refreshStories(restored.story.id);
+        notifyBroadcastSync();
+      }
+    } catch (err) {
+      console.error('Failed to restore snapshot:', err);
+    }
+  }, [storage, refreshStories, notifyBroadcastSync]);
 
   return {
     loading,
@@ -387,6 +463,5 @@ export function useStory(user?: User | null) {
     generateChaptersFromOverview,
     manualSaveAndSnapshot,
     restoreSnapshot,
-    refreshStories,
   };
 }

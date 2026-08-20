@@ -8,11 +8,85 @@ import {
   query,
   where,
   writeBatch,
+  onSnapshot,
 } from 'firebase/firestore';
 import { db } from '../firebase/firebaseConfig';
 import type { Story, Chapter, Snapshot, CodexEntry } from '../../types/manuscript';
 import { indexedDBAdapter } from './IndexedDBAdapter';
 import type { StorageAdapter } from './IndexedDBAdapter';
+
+export function subscribeToRealtimeSync(
+  userId: string,
+  activeStoryId: string | null,
+  callbacks: {
+    onStoriesUpdate: (stories: Story[]) => void;
+    onChaptersUpdate: (chapters: Chapter[]) => void;
+    onCodexUpdate: (entries: CodexEntry[]) => void;
+  }
+) {
+  if (!db || !userId) return () => {};
+
+  const userDocRef = doc(db, 'users', userId);
+  const storiesCol = collection(userDocRef, 'stories');
+  const chaptersCol = collection(userDocRef, 'chapters');
+  const codexCol = collection(userDocRef, 'codex');
+
+  // Real-time listener for stories
+  const unsubStories = onSnapshot(
+    storiesCol,
+    (snap) => {
+      const list: Story[] = [];
+      snap.forEach((d) => {
+        const data = d.data() as Story;
+        list.push({ ...data, targetWordCount: data.targetWordCount || 50000 });
+      });
+      if (list.length > 0) {
+        list.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+        callbacks.onStoriesUpdate(list);
+      }
+    },
+    (err) => console.warn('[RealtimeSync] Stories listener warning:', err)
+  );
+
+  // Real-time listener for codex entries
+  const unsubCodex = onSnapshot(
+    codexCol,
+    (snap) => {
+      const list: CodexEntry[] = [];
+      snap.forEach((d) => {
+        const data = d.data() as CodexEntry;
+        if (!activeStoryId || data.storyId === activeStoryId) {
+          list.push(data);
+        }
+      });
+      list.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+      callbacks.onCodexUpdate(list);
+    },
+    (err) => console.warn('[RealtimeSync] Codex listener warning:', err)
+  );
+
+  // Real-time listener for active story chapters
+  let unsubChapters = () => {};
+  if (activeStoryId) {
+    const q = query(chaptersCol, where('storyId', '==', activeStoryId));
+    unsubChapters = onSnapshot(
+      q,
+      (snap) => {
+        const list: Chapter[] = [];
+        snap.forEach((d) => list.push(d.data() as Chapter));
+        list.sort((a, b) => a.order - b.order);
+        callbacks.onChaptersUpdate(list);
+      },
+      (err) => console.warn('[RealtimeSync] Chapters listener warning:', err)
+    );
+  }
+
+  return () => {
+    unsubStories();
+    unsubCodex();
+    unsubChapters();
+  };
+}
 
 export function createFirestoreAdapter(userId: string | null): StorageAdapter {
   // Fallback to IndexedDB if not logged in or db is null
